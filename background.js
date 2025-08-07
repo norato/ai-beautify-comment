@@ -601,6 +601,51 @@ chrome.runtime.onMessage.addListener((request, _, sendResponse) => {
       sendResponse({ success: false, error: error.message });
     });
     return true; // Keep message channel open for async response
+  } else if (request.action === 'getSettings') {
+    // Popup requests current settings
+    getSettings().then((settings) => {
+      sendResponse({ success: true, data: settings });
+    }).catch((error) => {
+      console.error('Error getting settings:', error);
+      sendResponse({ success: false, error: error.message });
+    });
+    return true;
+  } else if (request.action === 'addPrompt') {
+    // Popup requests to add a new prompt
+    addPrompt(request.data).then((newPrompt) => {
+      sendResponse({ success: true, data: newPrompt });
+    }).catch((error) => {
+      console.error('Error adding prompt:', error);
+      sendResponse({ success: false, error: error.message });
+    });
+    return true;
+  } else if (request.action === 'updatePrompt') {
+    // Popup requests to update an existing prompt
+    updatePrompt(request.data.id, request.data).then((success) => {
+      sendResponse({ success: success });
+    }).catch((error) => {
+      console.error('Error updating prompt:', error);
+      sendResponse({ success: false, error: error.message });
+    });
+    return true;
+  } else if (request.action === 'deletePrompt') {
+    // Popup requests to delete a prompt
+    deletePrompt(request.data.id).then((success) => {
+      sendResponse({ success: success });
+    }).catch((error) => {
+      console.error('Error deleting prompt:', error);
+      sendResponse({ success: false, error: error.message });
+    });
+    return true;
+  } else if (request.action === 'updateSettings') {
+    // Popup requests to update global settings
+    updateSettings(request.data).then(() => {
+      sendResponse({ success: true });
+    }).catch((error) => {
+      console.error('Error updating settings:', error);
+      sendResponse({ success: false, error: error.message });
+    });
+    return true;
   }
   return true;
 });

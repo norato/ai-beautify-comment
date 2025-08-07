@@ -2,22 +2,220 @@
 
 // Prevent memory leaks by cleaning up listeners
 let cleanupFunctions = [];
+let currentPrompts = [];
 
 document.addEventListener('DOMContentLoaded', async () => {
+    // Tab elements
+    const apiKeyTabBtn = document.getElementById('apiKeyTabBtn');
+    const customPromptsTabBtn = document.getElementById('customPromptsTabBtn');
+    const apiKeyTabContent = document.getElementById('apiKeyTabContent');
+    const customPromptsTabContent = document.getElementById('customPromptsTabContent');
+    
+    // API Key elements
     const apiKeyInput = document.getElementById('apiKeyInput');
     const toggleVisibility = document.getElementById('toggleVisibility');
     const apiKeyForm = document.getElementById('apiKeyForm');
     const statusDiv = document.getElementById('status');
     
+    // Custom Prompts elements
+    const promptsList = document.getElementById('promptsList');
+    const addPromptBtn = document.getElementById('addPromptBtn');
+    const promptFormContainer = document.getElementById('promptFormContainer');
+    const formTitle = document.getElementById('formTitle');
+    const promptIdInput = document.getElementById('promptId');
+    const promptNameInput = document.getElementById('promptName');
+    const promptTextInput = document.getElementById('promptText');
+    const responseCountInput = document.getElementById('responseCount');
+    const promptEnabledCheckbox = document.getElementById('promptEnabled');
+    const savePromptBtn = document.getElementById('savePromptBtn');
+    const cancelPromptBtn = document.getElementById('cancelPromptBtn');
+    const defaultResponseCountInput = document.getElementById('defaultResponseCount');
+    const saveDefaultBtn = document.getElementById('saveDefaultBtn');
+    const promptLimitMessage = document.querySelector('.prompt-limit-message');
+    const noPromptsMessage = document.querySelector('.no-prompts-message');
+    
     // Display update notification if available
     await displayUpdateNotification();
     
-    // Load existing API key
-    const { apiKey } = await chrome.storage.sync.get('apiKey');
-    if (apiKey) {
-        apiKeyInput.value = apiKey;
-        showStatus('API key is saved and ready to use!', 'success');
+    // Initialize with settings
+    await loadAndRenderSettings();
+    
+    // === TAB MANAGEMENT ===
+    function showTab(tabId) {
+        // Remove active class from all tabs and contents
+        document.querySelectorAll('.tab-button').forEach(btn => btn.classList.remove('active'));
+        document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+        
+        // Add active class to selected tab and content
+        document.getElementById(`${tabId}Btn`).classList.add('active');
+        document.getElementById(`${tabId}Content`).classList.add('active');
     }
+    
+    apiKeyTabBtn.addEventListener('click', () => showTab('apiKeyTab'));
+    customPromptsTabBtn.addEventListener('click', () => showTab('customPromptsTab'));
+    
+    // === SETTINGS LOADING AND RENDERING ===
+    async function loadAndRenderSettings() {
+        try {
+            const settings = await getSettings();
+            currentPrompts = settings.customPrompts || [];
+            
+            // Load API Key
+            if (settings.apiKey) {
+                apiKeyInput.value = settings.apiKey;
+                showStatus('API key is saved and ready to use!', 'success');
+            }
+            
+            // Load default response count
+            defaultResponseCountInput.value = settings.defaultResponseCount || 3;
+            
+            // Render custom prompts
+            renderCustomPrompts(currentPrompts);
+            
+        } catch (error) {
+            console.error('Error loading settings:', error);
+            showStatus('Error loading settings. Please refresh and try again.', 'error');
+        }
+    }
+    
+    function renderCustomPrompts(prompts) {
+        promptsList.innerHTML = '';
+        
+        if (prompts.length === 0) {
+            noPromptsMessage.style.display = 'block';
+        } else {
+            noPromptsMessage.style.display = 'none';
+            prompts.forEach(prompt => {
+                const promptElement = document.createElement('div');
+                promptElement.classList.add('prompt-item');
+                if (!prompt.enabled) promptElement.classList.add('disabled');
+                promptElement.dataset.id = prompt.id;
+                
+                promptElement.innerHTML = `
+                    <h4>
+                        ${prompt.name}
+                        <span class="prompt-status">${prompt.enabled ? 'Enabled' : 'Disabled'}</span>
+                    </h4>
+                    <div class="prompt-text">${prompt.promptText}</div>
+                    <div class="prompt-meta">Responses: ${prompt.responseCount}</div>
+                    <div class="prompt-actions">
+                        <button class="edit-btn" data-id="${prompt.id}">Edit</button>
+                        <button class="delete-btn" data-id="${prompt.id}">Delete</button>
+                        <button class="toggle-btn" data-id="${prompt.id}">
+                            ${prompt.enabled ? 'Disable' : 'Enable'}
+                        </button>
+                    </div>
+                `;
+                promptsList.appendChild(promptElement);
+            });
+        }
+        
+        // Manage visibility of add button and limit message
+        if (prompts.length >= 5) {
+            addPromptBtn.style.display = 'none';
+            promptLimitMessage.style.display = 'block';
+        } else {
+            addPromptBtn.style.display = 'block';
+            promptLimitMessage.style.display = 'none';
+        }
+    }
+    
+    // === PROMPT FORM MANAGEMENT ===
+    function showPromptForm(prompt = null) {
+        promptFormContainer.style.display = 'block';
+        addPromptBtn.style.display = 'none';
+        promptLimitMessage.style.display = 'none';
+        
+        if (prompt) {
+            formTitle.textContent = 'Edit Prompt';
+            promptIdInput.value = prompt.id;
+            promptNameInput.value = prompt.name;
+            promptTextInput.value = prompt.promptText;
+            responseCountInput.value = prompt.responseCount;
+            promptEnabledCheckbox.checked = prompt.enabled;
+        } else {
+            formTitle.textContent = 'Add New Prompt';
+            promptIdInput.value = '';
+            promptNameInput.value = '';
+            promptTextInput.value = '';
+            responseCountInput.value = 3;
+            promptEnabledCheckbox.checked = true;
+        }
+        
+        // Focus on name input
+        promptNameInput.focus();
+    }
+    
+    function hidePromptForm() {
+        promptFormContainer.style.display = 'none';
+        if (currentPrompts.length < 5) {
+            addPromptBtn.style.display = 'block';
+        } else {
+            promptLimitMessage.style.display = 'block';
+        }
+    }
+    
+    // === UTILITY FUNCTIONS ===
+    async function getSettings() {
+        // This will use the utils.js functions via importScripts in the background
+        return new Promise((resolve) => {
+            chrome.runtime.sendMessage({ action: 'getSettings' }, (response) => {
+                if (response && response.success) {
+                    resolve(response.data);
+                } else {
+                    // Fallback to direct chrome.storage access
+                    chrome.storage.sync.get().then(resolve);
+                }
+            });
+        });
+    }
+    
+    async function savePrompt(promptData) {
+        return new Promise((resolve, reject) => {
+            chrome.runtime.sendMessage({ 
+                action: promptData.id ? 'updatePrompt' : 'addPrompt',
+                data: promptData
+            }, (response) => {
+                if (response && response.success) {
+                    resolve(response.data);
+                } else {
+                    reject(new Error(response?.error || 'Failed to save prompt'));
+                }
+            });
+        });
+    }
+    
+    async function deletePromptById(id) {
+        return new Promise((resolve, reject) => {
+            chrome.runtime.sendMessage({ 
+                action: 'deletePrompt',
+                data: { id }
+            }, (response) => {
+                if (response && response.success) {
+                    resolve();
+                } else {
+                    reject(new Error(response?.error || 'Failed to delete prompt'));
+                }
+            });
+        });
+    }
+    
+    async function updatePromptSettings(id, updates) {
+        return new Promise((resolve, reject) => {
+            chrome.runtime.sendMessage({ 
+                action: 'updatePrompt',
+                data: { id, ...updates }
+            }, (response) => {
+                if (response && response.success) {
+                    resolve();
+                } else {
+                    reject(new Error(response?.error || 'Failed to update prompt'));
+                }
+            });
+        });
+    }
+    
+    // === EVENT LISTENERS ===
     
     // Toggle API key visibility
     toggleVisibility.addEventListener('click', () => {
@@ -27,6 +225,121 @@ document.addEventListener('DOMContentLoaded', async () => {
         toggleVisibility.setAttribute('aria-label', 
             type === 'password' ? 'Show API key' : 'Hide API key'
         );
+    });
+    
+    // Add prompt button
+    addPromptBtn.addEventListener('click', () => showPromptForm());
+    
+    // Cancel prompt form
+    cancelPromptBtn.addEventListener('click', hidePromptForm);
+    
+    // Save prompt form
+    savePromptBtn.addEventListener('click', async (e) => {
+        e.preventDefault();
+        
+        const name = promptNameInput.value.trim();
+        const text = promptTextInput.value.trim();
+        const responseCount = parseInt(responseCountInput.value);
+        const enabled = promptEnabledCheckbox.checked;
+        const id = promptIdInput.value;
+        
+        // Validation
+        if (!name || !text) {
+            alert('Please fill in all required fields.');
+            return;
+        }
+        
+        if (isNaN(responseCount) || responseCount < 1 || responseCount > 5) {
+            alert('Number of responses must be between 1 and 5.');
+            return;
+        }
+        
+        try {
+            const promptData = { name, promptText: text, responseCount, enabled };
+            if (id) promptData.id = id;
+            
+            await savePrompt(promptData);
+            hidePromptForm();
+            await loadAndRenderSettings();
+            
+            // Update context menu
+            chrome.runtime.sendMessage({ action: 'updateContextMenu' });
+            
+        } catch (error) {
+            console.error('Error saving prompt:', error);
+            alert('Error saving prompt: ' + error.message);
+        }
+    });
+    
+    // Prompt list event delegation
+    promptsList.addEventListener('click', async (event) => {
+        const target = event.target;
+        const promptId = target.dataset.id;
+        
+        if (!promptId) return;
+        
+        if (target.classList.contains('edit-btn')) {
+            const prompt = currentPrompts.find(p => p.id === promptId);
+            if (prompt) showPromptForm(prompt);
+            
+        } else if (target.classList.contains('delete-btn')) {
+            if (confirm('Are you sure you want to delete this prompt?')) {
+                try {
+                    await deletePromptById(promptId);
+                    await loadAndRenderSettings();
+                    chrome.runtime.sendMessage({ action: 'updateContextMenu' });
+                } catch (error) {
+                    console.error('Error deleting prompt:', error);
+                    alert('Error deleting prompt: ' + error.message);
+                }
+            }
+            
+        } else if (target.classList.contains('toggle-btn')) {
+            try {
+                const prompt = currentPrompts.find(p => p.id === promptId);
+                if (prompt) {
+                    await updatePromptSettings(promptId, { enabled: !prompt.enabled });
+                    await loadAndRenderSettings();
+                    chrome.runtime.sendMessage({ action: 'updateContextMenu' });
+                }
+            } catch (error) {
+                console.error('Error toggling prompt:', error);
+                alert('Error toggling prompt: ' + error.message);
+            }
+        }
+    });
+    
+    // Save default response count
+    saveDefaultBtn.addEventListener('click', async () => {
+        const count = parseInt(defaultResponseCountInput.value);
+        
+        if (isNaN(count) || count < 1 || count > 5) {
+            alert('Default response count must be between 1 and 5.');
+            return;
+        }
+        
+        try {
+            chrome.runtime.sendMessage({ 
+                action: 'updateSettings',
+                data: { defaultResponseCount: count }
+            }, (response) => {
+                if (response && response.success) {
+                    // Show temporary success message
+                    const originalText = saveDefaultBtn.textContent;
+                    saveDefaultBtn.textContent = 'Saved!';
+                    saveDefaultBtn.disabled = true;
+                    setTimeout(() => {
+                        saveDefaultBtn.textContent = originalText;
+                        saveDefaultBtn.disabled = false;
+                    }, 2000);
+                } else {
+                    alert('Error saving default response count.');
+                }
+            });
+        } catch (error) {
+            console.error('Error saving default count:', error);
+            alert('Error saving default response count: ' + error.message);
+        }
     });
     
     // Handle form submission
