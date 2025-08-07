@@ -1,0 +1,41 @@
+{
+  "manifest_version": 3,
+  "name": "GPT LinkedIn Commenter",
+  "version": "1.0.0",
+  "description": "Generate professional LinkedIn comments using OpenAI's GPT-4o model",
+  
+  "permissions": [
+    "contextMenus",
+    "storage",
+    "clipboardWrite",
+    "scripting",
+    "notifications"
+  ],
+  
+  "host_permissions": [
+    "https://*.linkedin.com/*"
+  ],
+  
+  "background": {
+    "service_worker": "background.js"
+  },
+  
+  "content_scripts": [
+    {
+      "matches": ["https://*.linkedin.com/*"],
+      "js": ["content.js"],
+      "run_at": "document_idle"
+    }
+  ],
+  
+  "action": {
+    "default_popup": "popup.html",
+    "default_icon": {
+      "128": "icon.png"
+    }
+  },
+  
+  "icons": {
+    "128": "icon.png"
+  }
+}
