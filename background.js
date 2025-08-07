@@ -60,10 +60,20 @@ async function handleCommentGeneration(selectedText, tab) {
     }
     
     // Show loading notification immediately
-    chrome.tabs.sendMessage(tab.id, {
-      action: 'showLoading',
-      requestId: requestId
-    });
+    try {
+      chrome.tabs.sendMessage(tab.id, {
+        action: 'showLoading',
+        requestId: requestId
+      }, (response) => {
+        if (chrome.runtime.lastError) {
+          console.log('Content script not ready, using fallback notification');
+          showFallbackNotification('Generating Comment', 'Please wait while we generate your comment...');
+        }
+      });
+    } catch (e) {
+      console.log('Failed to send loading notification:', e);
+      showFallbackNotification('Generating Comment', 'Please wait while we generate your comment...');
+    }
     
     // Generate comment using OpenAI API with retry logic
     const comment = await retryWithBackoff(() => 
@@ -87,6 +97,10 @@ async function handleCommentGeneration(selectedText, tab) {
         chrome.tabs.sendMessage(tab.id, {
           action: 'showSuccess',
           requestId: requestId
+        }, (successResponse) => {
+          if (chrome.runtime.lastError) {
+            showFallbackNotification('Comment Generated!', 'The comment has been copied to your clipboard.');
+          }
         });
       } else {
         throw { 
@@ -99,14 +113,27 @@ async function handleCommentGeneration(selectedText, tab) {
   } catch (error) {
     console.error('Error generating comment:', error);
     
-    // Handle different error types
-    const errorMessage = error.message || ErrorMessages[error.type] || ErrorMessages[ErrorTypes.UNKNOWN];
+    // Handle different error types with proper serialization
+    let errorMessage;
+    if (error && error.message) {
+      errorMessage = error.message;
+    } else if (error && error.type && ErrorMessages[error.type]) {
+      errorMessage = ErrorMessages[error.type];
+    } else if (typeof error === 'string') {
+      errorMessage = error;
+    } else {
+      errorMessage = ErrorMessages[ErrorTypes.UNKNOWN];
+    }
     
     // Show error notification
     chrome.tabs.sendMessage(tab.id, {
       action: 'showError',
       message: errorMessage,
       requestId: requestId
+    }, (errorResponse) => {
+      if (chrome.runtime.lastError) {
+        showFallbackNotification('Error', errorMessage);
+      }
     });
   }
 }
