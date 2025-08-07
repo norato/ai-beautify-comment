@@ -1,8 +1,7 @@
 // Content script for GPT LinkedIn Commenter
 // Handles clipboard operations and DOM interactions
 
-// Base64 encoded icon (32x32)
-const ICON_BASE64 = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTI4IiBoZWlnaHQ9IjEyOCIgdmlld0JveD0iMCAwIDEyOCAxMjgiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PHJlY3Qgd2lkdGg9IjEyOCIgaGVpZ2h0PSIxMjgiIHJ4PSIyNCIgZmlsbD0iIzBBNjZDMiIvPjx0ZXh0IHg9IjIwIiB5PSI4MCIgZm9udC1mYW1pbHk9IkFyaWFsLCBzYW5zLXNlcmlmIiBmb250LXNpemU9IjQ4IiBmb250LXdlaWdodD0iYm9sZCIgZmlsbD0id2hpdGUiPmluPC90ZXh0PjxnIHRyYW5zZm9ybT0idHJhbnNsYXRlKDY1LCA0NSkiPjxwYXRoIGQ9Ik0yNSAyQzMzLjgzNjYgMiA0MSA5LjE2MzQ0IDQxIDE4QzQxIDI2LjgzNjYgMzMuODM2NiAzNCAyNSAzNEMyMy44MzY5IDM0IDIyLjcwMjYgMzMuODc2NCAyMS42MDk0IDMzLjY0MDZMMTQUNSWEDR5VjMwLjE0MDZDMTA0NTY1IDI3LjM5OTUgOCAyMi45NjY4IDggMThDOCA5LjE2MzQ0IDE1LjE2MzQgMiAyNCAySC2NVoiIGZpbGw9IndoaXRlIiBzdHJva2U9IiMwQTY2QzIiIHN0cm9rZS13aWR0aD0iMiIvPjxnIHRyYW5zZm9ybT0idHJhbnNsYXRlKDE2LCAxMCkiPjxwYXRoIGQ9Ik05IDBMMTAuNSAzTDEzLjUgNC41TDEwLjUgNkw5IDlMNy41IDZMNC41IDQuNUw3LjUgM0w5IDBaIiBmaWxsPSIjMEE2NkMyIi8+PHBhdGggZD0iTTQgN0w0Ljc1IDguNUw2LjI1IDkuMjVMNC43NSAxMEw0IDExLjVMMy4yNSAxMEwxLjc1IDkuMjVMMy4yNSA4LjVMNCA3WiIgZmlsbD0iIzBBNjZDMiIvPjxwYXRoIGQ9Ik0xMyA5TDEzLjUgMTBMMTQuNSAxMC41TDEzLjUgMTFMMTMgMTJMMTIuNSAxMUwxMS41IDEwLjVMMTIuNSAxMEwxMyA5WiIgZmlsbD0iIzBBNjZDMiIvPjwvZz48L2c+PC9zdmc+';
+// Get icon URL from extension
 
 // Notification component
 class LinkedInNotification {
@@ -27,7 +26,7 @@ class LinkedInNotification {
         this.notification.setAttribute('tabindex', '-1');
         this.notification.innerHTML = `
             <div class="gpt-notification-header">
-                <img src="${ICON_BASE64}" alt="GPT LinkedIn Commenter" class="gpt-notification-icon">
+                <img src="${chrome.runtime.getURL('icon.png')}" alt="GPT LinkedIn Commenter" class="gpt-notification-icon">
                 <button class="gpt-notification-close" aria-label="Close notification" style="display: none;" tabindex="0">&times;</button>
             </div>
             <div class="gpt-notification-content">
@@ -376,7 +375,6 @@ const activeRequests = new Map();
 // Listen for messages from the background script
 chrome.runtime.onMessage.addListener((request, _, sendResponse) => {
     try {
-        console.log('GPT LinkedIn: Message received:', request);
         const notification = initNotificationSystem();
         const requestId = request.requestId || 'default';
         
@@ -396,7 +394,6 @@ chrome.runtime.onMessage.addListener((request, _, sendResponse) => {
         
         // Notification message handlers with request tracking
         if (request.action === 'showLoading') {
-            console.log('GPT LinkedIn: Showing loading notification');
             activeRequests.set(requestId, { status: 'loading', timestamp: Date.now() });
             notification.show('Generating Comment', 'AI is creating your professional comment...', 'loading');
             sendResponse({ success: true });
@@ -542,37 +539,22 @@ chrome.runtime.onMessage.addListener((request, _, sendResponse) => {
     }
 });
 
-console.log('=== GPT LinkedIn Commenter Content Script Starting ===');
-console.log('🌍 Current URL:', window.location.href);
-console.log('📄 Document ready state:', document.readyState);
-console.log('⏰ Load timestamp:', new Date().toISOString());
-
-// Test notification system on load
+// Initialize notification system
 setTimeout(() => {
-    console.log('🧪 Testing notification system initialization...');
     try {
-        const testNotification = initNotificationSystem();
-        console.log('✅ Notification system initialized:', !!testNotification);
-        
-        if (testNotification && testNotification.notification) {
-            console.log('🎯 Notification element created successfully');
-        } else {
-            console.error('❌ Failed to create notification element');
-        }
+        initNotificationSystem();
     } catch (error) {
-        console.error('💥 Error initializing notification system:', error);
+        console.error('Error initializing notification system:', error);
     }
 }, 1000);
 
-// Add runtime connection test
+// Test runtime connection
 try {
     chrome.runtime.sendMessage({action: 'testConnection'}, (response) => {
         if (chrome.runtime.lastError) {
-            console.error('📵 Runtime connection failed:', chrome.runtime.lastError.message);
-        } else {
-            console.log('✅ Runtime connection successful:', response);
+            console.error('Runtime connection failed:', chrome.runtime.lastError.message);
         }
     });
 } catch (error) {
-    console.error('💥 Runtime connection exception:', error);
+    console.error('Runtime connection exception:', error);
 }

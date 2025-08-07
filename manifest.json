@@ -12,6 +12,13 @@
     "notifications"
   ],
   
+  "web_accessible_resources": [
+    {
+      "resources": ["icon.png"],
+      "matches": ["https://*.linkedin.com/*"]
+    }
+  ],
+  
   "host_permissions": [
     "https://*.linkedin.com/*"
   ],

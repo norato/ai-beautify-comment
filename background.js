@@ -1,49 +1,31 @@
 // Service Worker for GPT LinkedIn Commenter
 
-console.log('=== GPT LinkedIn Commenter Background Script Starting ===');
-
 // Load utilities
 try {
   importScripts('utils.js');
-  console.log('✓ Utils.js loaded successfully');
 } catch (error) {
-  console.error('✗ Failed to load utils.js:', error);
+  console.error('Failed to load utils.js:', error);
 }
 
 // Extension lifecycle handlers
 chrome.runtime.onInstalled.addListener((details) => {
-  console.log('🔄 Extension installed/updated:', details.reason);
-  
-  // Initialize context menu
-  console.log('🎯 Creating context menu...');
   createContextMenu();
   
-  // Set default icon
-  console.log('🎨 Setting default icon...');
   chrome.action.setIcon({
     path: {
       "128": "icon.png"
     }
   });
-  
-  console.log('✅ Installation complete');
 });
 
 // Create context menu on startup
 chrome.runtime.onStartup.addListener(() => {
-  console.log('🚀 Extension startup - creating context menu...');
   createContextMenu();
 });
 
 // Function to create context menu
 function createContextMenu() {
-  console.log('🔧 Creating context menu...');
-  
-  // Remove existing menus to avoid duplicates
   chrome.contextMenus.removeAll(() => {
-    console.log('🧹 Cleared existing context menus');
-    
-    // Create the context menu
     try {
       chrome.contextMenus.create({
         id: "generateLinkedInComment",
@@ -51,77 +33,45 @@ function createContextMenu() {
         contexts: ["selection"],
         documentUrlPatterns: ["*://*.linkedin.com/*"]
       });
-      console.log('✅ Context menu created successfully');
     } catch (error) {
-      console.error('✗ Failed to create context menu:', error);
+      console.error('Failed to create context menu:', error);
     }
   });
 }
 
 // Handle context menu clicks
 chrome.contextMenus.onClicked.addListener((info, tab) => {
-  console.log('🖱️ Context menu clicked!');
-  console.log('📋 Menu item ID:', info.menuItemId);
-  console.log('📝 Selected text:', info.selectionText);
-  console.log('🏷️ Tab info:', {
-    id: tab.id,
-    url: tab.url,
-    title: tab.title
-  });
-  
-  if (info.menuItemId === "generateLinkedInComment") {
-    if (info.selectionText) {
-      console.log('🚀 Starting comment generation...');
-      handleCommentGeneration(info.selectionText, tab);
-    } else {
-      console.warn('⚠️ No text selected');
-    }
-  } else {
-    console.warn('⚠️ Unknown menu item:', info.menuItemId);
+  if (info.menuItemId === "generateLinkedInComment" && info.selectionText) {
+    handleCommentGeneration(info.selectionText, tab);
   }
 });
 
 // Function to handle comment generation
 async function handleCommentGeneration(selectedText, tab) {
   const requestId = Date.now().toString();
-  console.log('🎬 handleCommentGeneration started');
-  console.log('🔢 Request ID:', requestId);
-  console.log('📄 Selected text length:', selectedText.length);
   
   try {
-    console.log('🔑 Getting API key from storage...');
     const { apiKey } = await chrome.storage.sync.get('apiKey');
     
     if (!apiKey) {
-      console.error('❌ No API key found');
       throw { 
         type: ErrorTypes.API_KEY_MISSING, 
         message: ErrorMessages[ErrorTypes.API_KEY_MISSING] 
       };
     }
     
-    console.log('✅ API key found (length:', apiKey.length, ')');
-    console.log('💬 About to send loading notification...');
-    
     // Show loading notification immediately
-    console.log('📨 Sending loading message to tab:', tab.id);
     try {
       chrome.tabs.sendMessage(tab.id, {
         action: 'showLoading',
         requestId: requestId
       }, (response) => {
-        console.log('📬 Loading message response:', response);
         if (chrome.runtime.lastError) {
-          console.error('📵 Content script communication error:', chrome.runtime.lastError.message);
-          console.log('🔄 Using fallback Chrome notification...');
           showFallbackNotification('Generating Comment', 'Please wait while we generate your comment...');
-        } else {
-          console.log('✅ Loading notification sent successfully');
         }
       });
     } catch (e) {
-      console.error('💥 Exception sending loading notification:', e);
-      console.log('🔄 Using fallback Chrome notification...');
+      console.error('Exception sending loading notification:', e);
       showFallbackNotification('Generating Comment', 'Please wait while we generate your comment...');
     }
     
@@ -227,8 +177,6 @@ async function showFallbackNotification(title, message) {
 
 // Function to call Gemini API
 async function generateComment(selectedText, apiKey) {
-  console.log('🤖 Calling Gemini API...');
-  
   // Detect language of the post
   const detectedLanguage = detectLanguage(selectedText);
   const languageName = getLanguageName(detectedLanguage);
@@ -252,7 +200,6 @@ Post content: "${selectedText}"
 Generate only the comment text, without any additional explanation or formatting.`;
 
   try {
-    console.log('📡 Making request to Gemini API...');
     const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`, {
       method: 'POST',
       headers: {
@@ -291,11 +238,8 @@ Generate only the comment text, without any additional explanation or formatting
       })
     });
 
-    console.log('📊 Gemini API response status:', response.status);
-
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
-      console.error('❌ Gemini API error:', errorData);
       const error = parseGeminiError({
         response: {
           status: response.status,
@@ -307,14 +251,12 @@ Generate only the comment text, without any additional explanation or formatting
     }
 
     const data = await response.json();
-    console.log('✅ Gemini API response received');
     
     if (data.candidates && data.candidates[0] && data.candidates[0].content && data.candidates[0].content.parts[0]) {
       const generatedText = data.candidates[0].content.parts[0].text.trim();
-      console.log('📝 Generated comment length:', generatedText.length);
       return generatedText;
     } else {
-      console.error('❌ Unexpected Gemini response format:', data);
+      console.error('Unexpected Gemini response format:', data);
       throw {
         type: ErrorTypes.API_ERROR,
         message: 'Unexpected response format from Gemini API'
@@ -322,7 +264,7 @@ Generate only the comment text, without any additional explanation or formatting
     }
     
   } catch (error) {
-    console.error('💥 Gemini API error:', error);
+    console.error('Gemini API error:', error);
     // If it's already a parsed error, throw it
     if (error.type) {
       throw error;
