@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GPT LinkedIn Commenter</title>
+    <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>GPT LinkedIn Commenter</h1>
+            <p class="subtitle">Generate professional LinkedIn comments with AI</p>
+        </header>
+        
+        <main>
+            <div class="api-key-section">
+                <h2>OpenAI API Key</h2>
+                <p class="description">Enter your OpenAI API key to enable comment generation</p>
+                
+                <form id="apiKeyForm">
+                    <div class="form-group">
+                        <input 
+                            type="password" 
+                            id="apiKeyInput" 
+                            placeholder="sk-..." 
+                            required
+                            autocomplete="off"
+                        />
+                        <button type="button" id="toggleVisibility" class="toggle-btn" aria-label="Toggle API key visibility">
+                            👁️
+                        </button>
+                    </div>
+                    
+                    <button type="submit" class="save-btn">Save API Key</button>
+                </form>
+                
+                <div id="status" class="status"></div>
+            </div>
+            
+            <div class="instructions">
+                <h3>How to use:</h3>
+                <ol>
+                    <li>Save your OpenAI API key above</li>
+                    <li>Go to any LinkedIn post</li>
+                    <li>Select the post text</li>
+                    <li>Right-click and choose "Generate LinkedIn Comment"</li>
+                    <li>The generated comment will be copied to your clipboard</li>
+                </ol>
+            </div>
+            
+            <div class="footer">
+                <p>Need an API key? <a href="https://platform.openai.com/api-keys" target="_blank">Get one here</a></p>
+            </div>
+        </main>
+    </div>
+    
+    <script src="popup.js"></script>
+</body>
+</html>
