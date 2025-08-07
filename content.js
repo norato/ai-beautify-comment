@@ -21,17 +21,21 @@ class LinkedInNotification {
     createNotification() {
         this.notification = document.createElement('div');
         this.notification.id = 'gpt-linkedin-notification';
+        this.notification.setAttribute('role', 'alert');
+        this.notification.setAttribute('aria-live', 'polite');
+        this.notification.setAttribute('aria-atomic', 'true');
+        this.notification.setAttribute('tabindex', '-1');
         this.notification.innerHTML = `
             <div class="gpt-notification-header">
                 <img src="${ICON_BASE64}" alt="GPT LinkedIn Commenter" class="gpt-notification-icon">
-                <button class="gpt-notification-close" aria-label="Close notification" style="display: none;">&times;</button>
+                <button class="gpt-notification-close" aria-label="Close notification" style="display: none;" tabindex="0">&times;</button>
             </div>
             <div class="gpt-notification-content">
-                <div class="gpt-notification-title"></div>
+                <div class="gpt-notification-title" role="heading" aria-level="3"></div>
                 <div class="gpt-notification-message"></div>
             </div>
-            <div class="gpt-notification-spinner" style="display: none;">
-                <div class="gpt-spinner"></div>
+            <div class="gpt-notification-spinner" style="display: none;" aria-label="Loading">
+                <div class="gpt-spinner" aria-hidden="true"></div>
             </div>
         `;
         
@@ -40,6 +44,9 @@ class LinkedInNotification {
         // Add click handler for close button
         const closeBtn = this.notification.querySelector('.gpt-notification-close');
         closeBtn.onclick = () => this.hide();
+        
+        // Add keyboard support
+        this.addKeyboardSupport();
     }
 
     attachStyles() {
@@ -130,6 +137,119 @@ class LinkedInNotification {
                 0% { transform: rotate(0deg); }
                 100% { transform: rotate(360deg); }
             }
+            
+            /* Enhanced animations and responsive design */
+            @keyframes gpt-slideInFromRight {
+                0% {
+                    transform: translateX(100%) translateY(-20px) !important;
+                    opacity: 0 !important;
+                    scale: 0.95 !important;
+                }
+                100% {
+                    transform: translateX(0) translateY(0) !important;
+                    opacity: 1 !important;
+                    scale: 1 !important;
+                }
+            }
+            
+            @keyframes gpt-slideOutToRight {
+                0% {
+                    transform: translateX(0) translateY(0) !important;
+                    opacity: 1 !important;
+                    scale: 1 !important;
+                }
+                100% {
+                    transform: translateX(100%) translateY(-20px) !important;
+                    opacity: 0 !important;
+                    scale: 0.95 !important;
+                }
+            }
+            
+            @keyframes gpt-pulse {
+                0%, 100% { transform: scale(1) !important; }
+                50% { transform: scale(1.05) !important; }
+            }
+            
+            /* Dynamic positioning based on LinkedIn layout */
+            @media screen and (max-width: 768px) {
+                #gpt-linkedin-notification {
+                    top: 60px !important;
+                    right: 10px !important;
+                    left: 10px !important;
+                    width: auto !important;
+                    max-width: calc(100vw - 20px) !important;
+                }
+            }
+            
+            @media screen and (max-height: 600px) {
+                #gpt-linkedin-notification {
+                    top: 10px !important;
+                }
+            }
+            
+            /* Accessibility improvements */
+            #gpt-linkedin-notification[aria-live] {
+                position: fixed !important;
+            }
+            
+            .gpt-notification-close:focus {
+                outline: 2px solid #0a66c2 !important;
+                outline-offset: 2px !important;
+            }
+            
+            /* High contrast support */
+            @media (prefers-contrast: high) {
+                #gpt-linkedin-notification {
+                    border: 2px solid #000 !important;
+                    background: #fff !important;
+                }
+                
+                .gpt-notification-title {
+                    color: #000 !important;
+                }
+                
+                .gpt-notification-message {
+                    color: #000 !important;
+                }
+            }
+            
+            /* Reduced motion support */
+            @media (prefers-reduced-motion: reduce) {
+                #gpt-linkedin-notification,
+                .gpt-spinner {
+                    animation: none !important;
+                    transition: opacity 0.1s !important;
+                }
+                
+                #gpt-linkedin-notification.gpt-show {
+                    transform: none !important;
+                }
+            }
+            
+            /* Dark mode support */
+            @media (prefers-color-scheme: dark) {
+                #gpt-linkedin-notification {
+                    background: #1d2226 !important;
+                    border-color: #38434f !important;
+                    color: #f1f2f2 !important;
+                }
+                
+                .gpt-notification-title {
+                    color: #70b5f9 !important;
+                }
+                
+                .gpt-notification-message {
+                    color: #b0b7bf !important;
+                }
+                
+                .gpt-notification-close {
+                    color: #b0b7bf !important;
+                }
+                
+                .gpt-notification-close:hover {
+                    color: #f1f2f2 !important;
+                }
+            }
         `;
         
         document.head.appendChild(style);
@@ -161,10 +281,20 @@ class LinkedInNotification {
             this.hideTimer = null;
         }
         
-        // Show notification
+        // Update ARIA attributes
+        this.notification.setAttribute('aria-live', type === 'error' ? 'assertive' : 'polite');
+        
+        // Show notification with enhanced animation
         this.notification.style.display = 'block';
+        this.notification.style.animation = 'gpt-slideInFromRight 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards';
+        
         setTimeout(() => {
             this.notification.classList.add('gpt-show');
+            
+            // Add pulse animation for loading state
+            if (type === 'loading') {
+                this.notification.style.animation += ', gpt-pulse 2s ease-in-out infinite';
+            }
         }, 10);
         
         // Auto-hide for success messages
@@ -176,15 +306,37 @@ class LinkedInNotification {
     hide() {
         if (!this.notification) return;
         
+        // Enhanced slide-out animation
+        this.notification.style.animation = 'gpt-slideOutToRight 0.3s cubic-bezier(0.55, 0.055, 0.675, 0.19) forwards';
         this.notification.classList.remove('gpt-show');
+        
         setTimeout(() => {
             this.notification.style.display = 'none';
+            this.notification.style.animation = '';
         }, 300);
         
         if (this.hideTimer) {
             clearTimeout(this.hideTimer);
             this.hideTimer = null;
         }
+    }
+    
+    addKeyboardSupport() {
+        // ESC key to close notification
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && this.notification && this.notification.style.display !== 'none') {
+                this.hide();
+            }
+        });
+        
+        // Focus management
+        const closeBtn = this.notification.querySelector('.gpt-notification-close');
+        closeBtn.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                this.hide();
+            }
+        });
     }
     
     addCleanupListeners() {
