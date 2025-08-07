@@ -59,10 +59,11 @@ async function handleCommentGeneration(selectedText, tab) {
       };
     }
     
-    // Show loading notification in page with fallback
-    await sendNotificationWithFallback(tab.id, {
-      action: 'showLoading'
-    }, 'Generating Comment', 'Please wait while we generate your comment...');
+    // Show loading notification immediately
+    chrome.tabs.sendMessage(tab.id, {
+      action: 'showLoading',
+      requestId: requestId
+    });
     
     // Generate comment using OpenAI API with retry logic
     const comment = await retryWithBackoff(() => 
@@ -82,11 +83,11 @@ async function handleCommentGeneration(selectedText, tab) {
       }
       
       if (response && response.success) {
-        // Show success notification with fallback
-        await sendNotificationWithFallback(tab.id, {
+        // Show success notification
+        chrome.tabs.sendMessage(tab.id, {
           action: 'showSuccess',
           requestId: requestId
-        }, 'Comment Generated!', 'The comment has been copied to your clipboard.');
+        });
       } else {
         throw { 
           type: ErrorTypes.CLIPBOARD_ERROR, 
@@ -101,12 +102,12 @@ async function handleCommentGeneration(selectedText, tab) {
     // Handle different error types
     const errorMessage = error.message || ErrorMessages[error.type] || ErrorMessages[ErrorTypes.UNKNOWN];
     
-    // Show error notification with fallback
-    await sendNotificationWithFallback(tab.id, {
+    // Show error notification
+    chrome.tabs.sendMessage(tab.id, {
       action: 'showError',
       message: errorMessage,
       requestId: requestId
-    }, 'Error', errorMessage);
+    });
   }
 }
 

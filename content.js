@@ -376,6 +376,7 @@ const activeRequests = new Map();
 // Listen for messages from the background script
 chrome.runtime.onMessage.addListener((request, _, sendResponse) => {
     try {
+        console.log('GPT LinkedIn: Message received:', request);
         const notification = initNotificationSystem();
         const requestId = request.requestId || 'default';
         
@@ -395,6 +396,7 @@ chrome.runtime.onMessage.addListener((request, _, sendResponse) => {
         
         // Notification message handlers with request tracking
         if (request.action === 'showLoading') {
+            console.log('GPT LinkedIn: Showing loading notification');
             activeRequests.set(requestId, { status: 'loading', timestamp: Date.now() });
             notification.show('Generating Comment', 'AI is creating your professional comment...', 'loading');
             sendResponse({ success: true });
@@ -540,4 +542,10 @@ chrome.runtime.onMessage.addListener((request, _, sendResponse) => {
     }
 });
 
-console.log('GPT LinkedIn Commenter content script loaded');
+console.log('GPT LinkedIn Commenter content script loaded on:', window.location.href);
+
+// Test notification system on load
+setTimeout(() => {
+    const testNotification = initNotificationSystem();
+    console.log('GPT LinkedIn: Notification system initialized:', !!testNotification);
+}, 1000);
