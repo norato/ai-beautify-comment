@@ -1,5 +1,8 @@
 // Service Worker for GPT LinkedIn Commenter
 
+// Load utilities
+importScripts('utils.js');
+
 // Extension lifecycle handlers
 chrome.runtime.onInstalled.addListener((details) => {
   console.log('GPT LinkedIn Commenter installed:', details.reason);
@@ -48,13 +51,10 @@ async function handleCommentGeneration(selectedText, tab) {
     const { apiKey } = await chrome.storage.sync.get('apiKey');
     
     if (!apiKey) {
-      chrome.notifications.create({
-        type: 'basic',
-        iconUrl: 'icon.png',
-        title: 'API Key Required',
-        message: 'Please set your OpenAI API key in the extension popup.'
-      });
-      return;
+      throw { 
+        type: ErrorTypes.API_KEY_MISSING, 
+        message: ErrorMessages[ErrorTypes.API_KEY_MISSING] 
+      };
     }
     
     // Show loading notification
@@ -65,8 +65,10 @@ async function handleCommentGeneration(selectedText, tab) {
       message: 'Please wait while we generate your comment...'
     });
     
-    // Generate comment using OpenAI API
-    const comment = await generateComment(selectedText, apiKey);
+    // Generate comment using OpenAI API with retry logic
+    const comment = await retryWithBackoff(() => 
+      generateComment(selectedText, apiKey)
+    );
     
     // Send comment to content script for clipboard
     chrome.tabs.sendMessage(tab.id, {
@@ -84,64 +86,108 @@ async function handleCommentGeneration(selectedText, tab) {
           message: 'The comment has been copied to your clipboard.'
         });
       } else {
-        throw new Error('Failed to copy to clipboard');
+        throw { 
+          type: ErrorTypes.CLIPBOARD_ERROR, 
+          message: ErrorMessages[ErrorTypes.CLIPBOARD_ERROR] 
+        };
       }
     });
     
   } catch (error) {
     console.error('Error generating comment:', error);
     chrome.notifications.clear('loading');
+    
+    // Handle different error types
+    const errorMessage = error.message || ErrorMessages[error.type] || ErrorMessages[ErrorTypes.UNKNOWN];
+    
     chrome.notifications.create({
       type: 'basic',
       iconUrl: 'icon.png',
       title: 'Error',
-      message: error.message || 'Failed to generate comment. Please try again.'
+      message: errorMessage
     });
   }
 }
 
 // Function to call OpenAI API
 async function generateComment(selectedText, apiKey) {
-  const prompt = `Generate a professional and engaging LinkedIn comment in response to the following post content. The comment should be thoughtful, add value to the discussion, and maintain a professional tone. Keep it concise (2-3 sentences) and authentic. Respond in the same language as the post.
+  // Detect language of the post
+  const detectedLanguage = detectLanguage(selectedText);
+  const languageName = getLanguageName(detectedLanguage);
+  
+  // Enhanced prompt with better instructions
+  const systemPrompt = `You are a thoughtful LinkedIn professional who writes valuable comments that:
+- Add meaningful insights or perspectives to the discussion
+- Ask thoughtful questions when appropriate
+- Share relevant experiences or examples
+- Maintain a professional yet personable tone
+- Show genuine engagement with the content
+- Avoid generic responses like "Great post!" or "Thanks for sharing"
+- Keep responses concise (2-3 sentences maximum)
+- Match the language and cultural context of the original post`;
+
+  const userPrompt = `Generate a professional LinkedIn comment for this post. The post appears to be in ${languageName}. Respond in the same language.
 
 Post content: "${selectedText}"
 
-Generate only the comment text, without any additional explanation or formatting.`;
+Remember: Be specific, add value, and keep it concise.`;
 
-  const response = await fetch('https://api.openai.com/v1/chat/completions', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${apiKey}`
-    },
-    body: JSON.stringify({
-      model: 'gpt-4o',
-      messages: [
-        {
-          role: 'system',
-          content: 'You are a professional LinkedIn user who writes engaging and valuable comments on posts.'
-        },
-        {
-          role: 'user',
-          content: prompt
-        }
-      ],
-      temperature: 0.7,
-      max_tokens: 150
-    })
-  });
+  try {
+    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${apiKey}`
+      },
+      body: JSON.stringify({
+        model: 'gpt-4o',
+        messages: [
+          {
+            role: 'system',
+            content: systemPrompt
+          },
+          {
+            role: 'user',
+            content: userPrompt
+          }
+        ],
+        temperature: 0.8, // Slightly higher for more creative responses
+        max_tokens: 150,
+        presence_penalty: 0.3, // Encourage diverse vocabulary
+        frequency_penalty: 0.3 // Reduce repetition
+      })
+    });
 
-  if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.error?.message || 'Failed to generate comment');
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      const error = parseOpenAIError({ 
+        response: { 
+          status: response.status, 
+          data: errorData,
+          headers: response.headers
+        } 
+      });
+      throw error;
+    }
+
+    const data = await response.json();
+    return data.choices[0].message.content.trim();
+    
+  } catch (error) {
+    // If it's already a parsed error, throw it
+    if (error.type) {
+      throw error;
+    }
+    // Otherwise, wrap it as a network error
+    throw { 
+      type: ErrorTypes.NETWORK_ERROR, 
+      message: ErrorMessages[ErrorTypes.NETWORK_ERROR] 
+    };
   }
-
-  const data = await response.json();
-  return data.choices[0].message.content.trim();
 }
 
 // Message handler for communication with popup and content scripts
-chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+chrome.runtime.onMessage.addListener((request, _, sendResponse) => {
   if (request.action === 'testConnection') {
     sendResponse({ success: true });
   }
