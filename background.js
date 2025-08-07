@@ -147,7 +147,7 @@ async function handleCommentGeneration(selectedText, tab) {
         chrome.tabs.sendMessage(tab.id, {
           action: 'showSuccess',
           requestId: requestId
-        }, (successResponse) => {
+        }, (_) => {
           if (chrome.runtime.lastError) {
             showFallbackNotification('Comment Generated!', 'The comment has been copied to your clipboard.');
           }
@@ -180,7 +180,7 @@ async function handleCommentGeneration(selectedText, tab) {
       action: 'showError',
       message: errorMessage,
       requestId: requestId
-    }, (errorResponse) => {
+    }, (_) => {
       if (chrome.runtime.lastError) {
         showFallbackNotification('Error', errorMessage);
       }
@@ -225,71 +225,104 @@ async function showFallbackNotification(title, message) {
   }
 }
 
-// Function to call OpenAI API
+// Function to call Gemini API
 async function generateComment(selectedText, apiKey) {
+  console.log('🤖 Calling Gemini API...');
+  
   // Detect language of the post
   const detectedLanguage = detectLanguage(selectedText);
   const languageName = getLanguageName(detectedLanguage);
   
-  // Enhanced prompt with better instructions
-  const systemPrompt = `You are a thoughtful LinkedIn professional who writes valuable comments that:
+  // Enhanced prompt optimized for Gemini
+  const prompt = `You are a thoughtful LinkedIn professional. Generate a professional LinkedIn comment for the following post. 
+
+Guidelines:
 - Add meaningful insights or perspectives to the discussion
 - Ask thoughtful questions when appropriate
-- Share relevant experiences or examples
+- Share relevant experiences or examples when fitting
 - Maintain a professional yet personable tone
 - Show genuine engagement with the content
 - Avoid generic responses like "Great post!" or "Thanks for sharing"
 - Keep responses concise (2-3 sentences maximum)
-- Match the language and cultural context of the original post`;
-
-  const userPrompt = `Generate a professional LinkedIn comment for this post. The post appears to be in ${languageName}. Respond in the same language.
+- The post appears to be in ${languageName} - respond in the same language
+- Be specific, add value, and keep it authentic
 
 Post content: "${selectedText}"
 
-Remember: Be specific, add value, and keep it concise.`;
+Generate only the comment text, without any additional explanation or formatting.`;
 
   try {
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+    console.log('📡 Making request to Gemini API...');
+    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`, {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${apiKey}`
+        'Content-Type': 'application/json'
       },
       body: JSON.stringify({
-        model: 'gpt-3.5-turbo',
-        messages: [
+        contents: [{
+          parts: [{
+            text: prompt
+          }]
+        }],
+        generationConfig: {
+          temperature: 0.8,
+          topK: 40,
+          topP: 0.9,
+          maxOutputTokens: 150,
+        },
+        safetySettings: [
           {
-            role: 'system',
-            content: systemPrompt
+            category: 'HARM_CATEGORY_HARASSMENT',
+            threshold: 'BLOCK_MEDIUM_AND_ABOVE'
           },
           {
-            role: 'user',
-            content: userPrompt
+            category: 'HARM_CATEGORY_HATE_SPEECH',
+            threshold: 'BLOCK_MEDIUM_AND_ABOVE'
+          },
+          {
+            category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT',
+            threshold: 'BLOCK_MEDIUM_AND_ABOVE'
+          },
+          {
+            category: 'HARM_CATEGORY_DANGEROUS_CONTENT',
+            threshold: 'BLOCK_MEDIUM_AND_ABOVE'
           }
-        ],
-        temperature: 0.8, // Slightly higher for more creative responses
-        max_tokens: 150,
-        presence_penalty: 0.3, // Encourage diverse vocabulary
-        frequency_penalty: 0.3 // Reduce repetition
+        ]
       })
     });
 
+    console.log('📊 Gemini API response status:', response.status);
+
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
-      const error = parseOpenAIError({ 
-        response: { 
-          status: response.status, 
+      console.error('❌ Gemini API error:', errorData);
+      const error = parseGeminiError({
+        response: {
+          status: response.status,
           data: errorData,
           headers: response.headers
-        } 
+        }
       });
       throw error;
     }
 
     const data = await response.json();
-    return data.choices[0].message.content.trim();
+    console.log('✅ Gemini API response received');
+    
+    if (data.candidates && data.candidates[0] && data.candidates[0].content && data.candidates[0].content.parts[0]) {
+      const generatedText = data.candidates[0].content.parts[0].text.trim();
+      console.log('📝 Generated comment length:', generatedText.length);
+      return generatedText;
+    } else {
+      console.error('❌ Unexpected Gemini response format:', data);
+      throw {
+        type: ErrorTypes.API_ERROR,
+        message: 'Unexpected response format from Gemini API'
+      };
+    }
     
   } catch (error) {
+    console.error('💥 Gemini API error:', error);
     // If it's already a parsed error, throw it
     if (error.type) {
       throw error;

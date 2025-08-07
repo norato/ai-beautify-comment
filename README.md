@@ -1,10 +1,10 @@
-# GPT LinkedIn Commenter
+# Gemini LinkedIn Commenter
 
-A Chrome extension that generates professional LinkedIn comments using OpenAI's GPT-3.5-turbo model with automatic clipboard integration.
+A Chrome extension that generates professional LinkedIn comments using Google's Gemini 1.5 Flash model with automatic clipboard integration.
 
 ## Features
 
-- 🤖 AI-powered comment generation using GPT-3.5-turbo
+- 🤖 AI-powered comment generation using Gemini 1.5 Flash
 - 📋 Automatic clipboard integration
 - 🌍 Multi-language support (preserves post language)
 - 🎨 Professional LinkedIn-styled interface
@@ -31,15 +31,15 @@ A Chrome extension that generates professional LinkedIn comments using OpenAI's 
    - Click "Load unpacked"
    - Select the extension folder
 
-4. **Get your OpenAI API Key**
-   - Visit [OpenAI Platform](https://platform.openai.com/api-keys)
+4. **Get your Google Gemini API Key**
+   - Visit [Google AI Studio](https://aistudio.google.com/app/apikey)
    - Create an account or sign in
    - Generate a new API key
-   - Copy the key (starts with `sk-`)
+   - Copy the key (starts with `AIzaSy`)
 
 5. **Configure the extension**
    - Click the extension icon in Chrome toolbar
-   - Paste your OpenAI API key
+   - Paste your Gemini API key
    - Click "Save API Key"
 
 ## Usage
@@ -89,12 +89,12 @@ A Chrome extension that generates professional LinkedIn comments using OpenAI's 
 ## Troubleshooting
 
 ### "API Key Required" error
-- Ensure you've saved your OpenAI API key in the extension popup
-- Verify the key starts with "sk-"
+- Ensure you've saved your Gemini API key in the extension popup
+- Verify the key starts with "AIzaSy"
 
 ### "Rate limit exceeded" error
 - Wait a few moments before trying again
-- Check your OpenAI usage limits
+- Check your Gemini API usage limits
 
 ### Comments not copying to clipboard
 - Ensure you're on a LinkedIn page
@@ -121,7 +121,7 @@ gpt-linkedin-commenter/
 
 ### Technologies Used
 - Chrome Extensions Manifest V3
-- OpenAI GPT-3.5-turbo API
+- Google Gemini 1.5 Flash API
 - JavaScript ES6+
 - CSS3 with animations
 - Chrome Storage API
@@ -132,7 +132,7 @@ This extension:
 - Only activates on LinkedIn domains
 - Stores API keys locally on your device
 - Does not collect or transmit personal data
-- Only sends selected text to OpenAI for processing
+- Only sends selected text to Google Gemini for processing
 
 ## License
 

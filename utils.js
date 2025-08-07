@@ -30,8 +30,8 @@ const RetryConfig = {
     backoffFactor: 2
 };
 
-// Parse OpenAI API error
-function parseOpenAIError(error) {
+// Parse Gemini API error
+function parseGeminiError(error) {
     if (!error.response) {
         return { type: ErrorTypes.NETWORK_ERROR, message: ErrorMessages[ErrorTypes.NETWORK_ERROR] };
     }
@@ -40,7 +40,13 @@ function parseOpenAIError(error) {
     const data = error.response.data;
     
     switch (status) {
+        case 400:
+            if (data?.error?.message?.includes('API_KEY_INVALID')) {
+                return { type: ErrorTypes.API_KEY_INVALID, message: ErrorMessages[ErrorTypes.API_KEY_INVALID] };
+            }
+            return { type: ErrorTypes.API_ERROR, message: data?.error?.message || ErrorMessages[ErrorTypes.API_ERROR] };
         case 401:
+        case 403:
             return { type: ErrorTypes.API_KEY_INVALID, message: ErrorMessages[ErrorTypes.API_KEY_INVALID] };
         case 429:
             const retryAfter = error.response.headers?.['retry-after'];
@@ -48,15 +54,18 @@ function parseOpenAIError(error) {
                 ? `Rate limit exceeded. Please wait ${retryAfter} seconds.`
                 : ErrorMessages[ErrorTypes.RATE_LIMIT];
             return { type: ErrorTypes.RATE_LIMIT, message, retryAfter };
-        case 400:
-            return { type: ErrorTypes.API_ERROR, message: data?.error?.message || ErrorMessages[ErrorTypes.API_ERROR] };
         case 500:
         case 502:
         case 503:
-            return { type: ErrorTypes.API_ERROR, message: 'OpenAI service temporarily unavailable. Please try again.' };
+            return { type: ErrorTypes.API_ERROR, message: 'Gemini service temporarily unavailable. Please try again.' };
         default:
             return { type: ErrorTypes.API_ERROR, message: data?.error?.message || ErrorMessages[ErrorTypes.API_ERROR] };
     }
+}
+
+// Legacy function for backward compatibility
+function parseOpenAIError(error) {
+    return parseGeminiError(error);
 }
 
 // Retry with exponential backoff
@@ -152,6 +161,7 @@ if (typeof module !== 'undefined' && module.exports) {
         ErrorTypes,
         ErrorMessages,
         RetryConfig,
+        parseGeminiError,
         parseOpenAIError,
         retryWithBackoff,
         sleep,

@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
-  "name": "GPT LinkedIn Commenter",
-  "version": "1.0.0",
-  "description": "Generate professional LinkedIn comments using OpenAI's GPT-4o model",
+  "name": "Gemini LinkedIn Commenter",
+  "version": "2.0.0",
+  "description": "Generate professional LinkedIn comments using Google's Gemini 1.5 Flash model",
   
   "permissions": [
     "contextMenus",

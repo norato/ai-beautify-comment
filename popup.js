@@ -38,8 +38,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             return;
         }
         
-        if (!apiKey.startsWith('sk-')) {
-            showStatus('Invalid API key format. It should start with "sk-"', 'error');
+        if (!apiKey.startsWith('AIzaSy')) {
+            showStatus('Invalid API key format. Gemini API keys start with "AIzaSy"', 'error');
             return;
         }
         
@@ -89,11 +89,18 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Function to validate API key
     async function validateApiKey(apiKey) {
         try {
-            const response = await fetch('https://api.openai.com/v1/models', {
-                method: 'GET',
+            const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`, {
+                method: 'POST',
                 headers: {
-                    'Authorization': `Bearer ${apiKey}`
-                }
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    contents: [{
+                        parts: [{
+                            text: 'Hello'
+                        }]
+                    }]
+                })
             });
             
             return response.ok;
