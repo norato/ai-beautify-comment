@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Gemini LinkedIn Commenter",
-  "version": "2.0.0",
+  "version": "2.2.0",
   "description": "Generate professional LinkedIn comments using Google's Gemini 1.5 Flash model",
   
   "permissions": [
@@ -22,7 +22,8 @@
   
   "host_permissions": [
     "https://*.linkedin.com/*",
-    "https://raw.githubusercontent.com/*"
+    "https://raw.githubusercontent.com/*",
+    "https://generativelanguage.googleapis.com/*"
   ],
   
   "background": {

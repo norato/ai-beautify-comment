@@ -1,19 +1,55 @@
 # Gemini LinkedIn Commenter
 
-A Chrome extension that generates professional LinkedIn comments using Google's Gemini 1.5 Flash model with automatic clipboard integration.
+A Chrome extension that generates professional LinkedIn comments using Google's Gemini 1.5 Flash model with custom prompts, multiple response options, and automatic clipboard integration.
 
-![Extension Demo](https://via.placeholder.com/800x400/0A66C2/FFFFFF?text=Gemini+LinkedIn+Commenter+Demo)
+## 📸 Screenshots
+
+### API Key Configuration
+![API Key Setup](images/api-key.png)
+
+### Custom Prompts Management  
+![Custom Prompts](images/custom-prompts.png)
+
+### Multiple Response Selection
+![Response Modal](images/responses.png)
 
 ## 🚀 Features
 
-- 🤖 AI-powered comment generation using Gemini 1.5 Flash
-- 📋 Automatic clipboard integration
-- 🌍 Multi-language support (preserves post language)
-- 🎨 Professional LinkedIn-styled interface
-- 🔒 Secure local API key storage
-- ♿ Accessibility-friendly design
-- 🔄 Automatic update notifications
-- 🚀 Fast and responsive with retry logic
+### Core Functionality
+- 🤖 **AI-powered comment generation** using Gemini 1.5 Flash
+- 📋 **Automatic clipboard integration** with one-click copy
+- 🌍 **Multi-language support** (preserves post language)
+- 🎨 **Professional LinkedIn-styled interface**
+
+### New Advanced Features
+- ✨ **Custom Prompts System** - Create up to 5 personalized prompts for different comment styles
+- 🎯 **Multiple Response Generation** - Generate 1-5 responses per prompt with modal selection
+- ⚡ **Smart Auto-Copy** - Single responses auto-copy, multiple responses show selection modal
+- ⚙️ **Global Settings** - Configure default response count and manage all prompts
+- 🛡️ **Enhanced Error Handling** - Detailed feedback with timeout protection and specific error messages
+- 🎨 **Improved UI/UX** - Better form layouts, inline help text, and consistent styling
+
+### Security & Performance
+- 🔒 **Secure local API key storage**
+- ♿ **Accessibility-friendly design**
+- 🔄 **Automatic update notifications**
+- 🚀 **Fast and responsive with retry logic**
+- ⏱️ **Intelligent timeout handling**
+
+## 🆕 What's New in v2.2.0
+
+### Enhanced User Experience
+- **🛡️ Robust Error Handling** - Added 10-second API timeout with specific error messages for network failures, timeouts, and invalid keys
+- **📱 Improved Form Layout** - Reorganized form groups into clean column layouts with help text positioned below input fields
+- **🎯 Fixed Button Positioning** - Resolved UI issues where buttons appeared outside containers by implementing proper flexbox layouts
+- **💬 Better Visual Feedback** - Added loading states with spinner animations and detailed validation messages
+- **✨ Consistent UI Alignment** - All interface elements now stay within proper container boundaries
+
+### Technical Improvements
+- Replaced `position: absolute` with flexbox for better responsive design
+- Added `Promise.race` for timeout handling in API requests
+- Enhanced CSS specificity to prevent style conflicts
+- Improved accessibility with better focus management
 
 ## 📦 Distribution
 
@@ -54,6 +90,26 @@ The extension includes an automatic update checker:
 2. Click the extension icon in Chrome
 3. Enter your API key (starts with `AIzaSy`)
 4. Click "Save API Key"
+
+### Custom Prompts Setup
+1. Switch to the **"Custom Prompts"** tab
+2. Click **"Add New Prompt"** to create personalized prompts
+3. Configure each prompt with:
+   - **Name** - Appears in right-click context menu
+   - **Instructions** - Tell the AI how to generate comments
+   - **Response Count** - Generate 1-5 responses (1 = auto-copy, 2+ = modal selection)
+   - **Enabled/Disabled** - Show/hide in context menu
+4. Use **Global Settings** to set default response count for the built-in prompt
+
+### How to Use
+1. **Go to any LinkedIn post**
+2. **Select the post text** you want to comment on
+3. **Right-click** and choose from available prompts:
+   - **"Generate LinkedIn Comment"** (default prompt)
+   - Your custom prompts (if created)
+4. **Results depend on response count**:
+   - **1 response**: Automatically copied to clipboard
+   - **2+ responses**: Modal opens for you to choose the best option
 
 ### Supported Languages
 - English, Portuguese, Spanish, French
