@@ -1,77 +1,127 @@
 // Service Worker for GPT LinkedIn Commenter
 
+console.log('=== GPT LinkedIn Commenter Background Script Starting ===');
+
 // Load utilities
-importScripts('utils.js');
+try {
+  importScripts('utils.js');
+  console.log('✓ Utils.js loaded successfully');
+} catch (error) {
+  console.error('✗ Failed to load utils.js:', error);
+}
 
 // Extension lifecycle handlers
 chrome.runtime.onInstalled.addListener((details) => {
-  console.log('GPT LinkedIn Commenter installed:', details.reason);
+  console.log('🔄 Extension installed/updated:', details.reason);
   
   // Initialize context menu
+  console.log('🎯 Creating context menu...');
   createContextMenu();
   
   // Set default icon
+  console.log('🎨 Setting default icon...');
   chrome.action.setIcon({
     path: {
       "128": "icon.png"
     }
   });
+  
+  console.log('✅ Installation complete');
 });
 
 // Create context menu on startup
 chrome.runtime.onStartup.addListener(() => {
+  console.log('🚀 Extension startup - creating context menu...');
   createContextMenu();
 });
 
 // Function to create context menu
 function createContextMenu() {
+  console.log('🔧 Creating context menu...');
+  
   // Remove existing menus to avoid duplicates
   chrome.contextMenus.removeAll(() => {
+    console.log('🧹 Cleared existing context menus');
+    
     // Create the context menu
-    chrome.contextMenus.create({
-      id: "generateLinkedInComment",
-      title: "Generate LinkedIn Comment",
-      contexts: ["selection"],
-      documentUrlPatterns: ["*://*.linkedin.com/*"]
-    });
+    try {
+      chrome.contextMenus.create({
+        id: "generateLinkedInComment",
+        title: "Generate LinkedIn Comment",
+        contexts: ["selection"],
+        documentUrlPatterns: ["*://*.linkedin.com/*"]
+      });
+      console.log('✅ Context menu created successfully');
+    } catch (error) {
+      console.error('✗ Failed to create context menu:', error);
+    }
   });
 }
 
 // Handle context menu clicks
 chrome.contextMenus.onClicked.addListener((info, tab) => {
-  if (info.menuItemId === "generateLinkedInComment" && info.selectionText) {
-    handleCommentGeneration(info.selectionText, tab);
+  console.log('🖱️ Context menu clicked!');
+  console.log('📋 Menu item ID:', info.menuItemId);
+  console.log('📝 Selected text:', info.selectionText);
+  console.log('🏷️ Tab info:', {
+    id: tab.id,
+    url: tab.url,
+    title: tab.title
+  });
+  
+  if (info.menuItemId === "generateLinkedInComment") {
+    if (info.selectionText) {
+      console.log('🚀 Starting comment generation...');
+      handleCommentGeneration(info.selectionText, tab);
+    } else {
+      console.warn('⚠️ No text selected');
+    }
+  } else {
+    console.warn('⚠️ Unknown menu item:', info.menuItemId);
   }
 });
 
 // Function to handle comment generation
 async function handleCommentGeneration(selectedText, tab) {
   const requestId = Date.now().toString();
+  console.log('🎬 handleCommentGeneration started');
+  console.log('🔢 Request ID:', requestId);
+  console.log('📄 Selected text length:', selectedText.length);
   
   try {
-    // Get API key from storage
+    console.log('🔑 Getting API key from storage...');
     const { apiKey } = await chrome.storage.sync.get('apiKey');
     
     if (!apiKey) {
+      console.error('❌ No API key found');
       throw { 
         type: ErrorTypes.API_KEY_MISSING, 
         message: ErrorMessages[ErrorTypes.API_KEY_MISSING] 
       };
     }
     
+    console.log('✅ API key found (length:', apiKey.length, ')');
+    console.log('💬 About to send loading notification...');
+    
     // Show loading notification immediately
+    console.log('📨 Sending loading message to tab:', tab.id);
     try {
       chrome.tabs.sendMessage(tab.id, {
         action: 'showLoading',
         requestId: requestId
       }, (response) => {
+        console.log('📬 Loading message response:', response);
         if (chrome.runtime.lastError) {
-          console.log('Content script not ready, using fallback notification');
+          console.error('📵 Content script communication error:', chrome.runtime.lastError.message);
+          console.log('🔄 Using fallback Chrome notification...');
           showFallbackNotification('Generating Comment', 'Please wait while we generate your comment...');
+        } else {
+          console.log('✅ Loading notification sent successfully');
         }
       });
     } catch (e) {
-      console.log('Failed to send loading notification:', e);
+      console.error('💥 Exception sending loading notification:', e);
+      console.log('🔄 Using fallback Chrome notification...');
       showFallbackNotification('Generating Comment', 'Please wait while we generate your comment...');
     }
     

@@ -542,10 +542,37 @@ chrome.runtime.onMessage.addListener((request, _, sendResponse) => {
     }
 });
 
-console.log('GPT LinkedIn Commenter content script loaded on:', window.location.href);
+console.log('=== GPT LinkedIn Commenter Content Script Starting ===');
+console.log('🌍 Current URL:', window.location.href);
+console.log('📄 Document ready state:', document.readyState);
+console.log('⏰ Load timestamp:', new Date().toISOString());
 
 // Test notification system on load
 setTimeout(() => {
-    const testNotification = initNotificationSystem();
-    console.log('GPT LinkedIn: Notification system initialized:', !!testNotification);
+    console.log('🧪 Testing notification system initialization...');
+    try {
+        const testNotification = initNotificationSystem();
+        console.log('✅ Notification system initialized:', !!testNotification);
+        
+        if (testNotification && testNotification.notification) {
+            console.log('🎯 Notification element created successfully');
+        } else {
+            console.error('❌ Failed to create notification element');
+        }
+    } catch (error) {
+        console.error('💥 Error initializing notification system:', error);
+    }
 }, 1000);
+
+// Add runtime connection test
+try {
+    chrome.runtime.sendMessage({action: 'testConnection'}, (response) => {
+        if (chrome.runtime.lastError) {
+            console.error('📵 Runtime connection failed:', chrome.runtime.lastError.message);
+        } else {
+            console.log('✅ Runtime connection successful:', response);
+        }
+    });
+} catch (error) {
+    console.error('💥 Runtime connection exception:', error);
+}
