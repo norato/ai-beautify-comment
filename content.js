@@ -635,16 +635,36 @@ function injectModalCss() {
     document.head.appendChild(style);
 }
 
-// Function to show multiple responses modal
+// Function to show multiple responses modal with Shadow DOM isolation
 function showMultipleResponsesModal(responses, promptName = 'Custom Prompt') {
-    // Remove any existing modal
-    const existingModal = document.querySelector('.lc-modal-overlay');
-    if (existingModal) {
-        existingModal.remove();
+    // Remove any existing modal host
+    const existingHost = document.getElementById('lc-modal-host');
+    if (existingHost) {
+        existingHost.remove();
     }
 
-    injectModalCss();
+    // Create Shadow DOM host element
+    const modalHost = document.createElement('div');
+    modalHost.id = 'lc-modal-host';
+    modalHost.style.cssText = `
+        position: fixed !important;
+        top: 0 !important;
+        left: 0 !important;
+        width: 100% !important;
+        height: 100% !important;
+        z-index: 99999 !important;
+        pointer-events: none !important;
+    `;
+    
+    // Create Shadow Root for complete CSS isolation
+    const shadowRoot = modalHost.attachShadow({ mode: 'open' });
+    
+    // Inject CSS into Shadow DOM
+    const style = document.createElement('style');
+    style.textContent = getModalShadowCSS();
+    shadowRoot.appendChild(style);
 
+    // Create modal structure inside Shadow DOM
     const modalOverlay = document.createElement('div');
     modalOverlay.classList.add('lc-modal-overlay');
 
@@ -653,18 +673,19 @@ function showMultipleResponsesModal(responses, promptName = 'Custom Prompt') {
 
     const title = document.createElement('h3');
     title.classList.add('lc-modal-title');
-    title.textContent = `${promptName} Responses`;
+    title.textContent = `${promptName} - ${responses.length} Response${responses.length > 1 ? 's' : ''}`;
 
     const subtitle = document.createElement('p');
     subtitle.classList.add('lc-modal-subtitle');
-    subtitle.textContent = 'Click on any response to copy it to your clipboard';
+    subtitle.textContent = 'Click any response to copy it to your clipboard';
 
     const closeButton = document.createElement('button');
     closeButton.classList.add('lc-modal-close-btn');
     closeButton.innerHTML = '&times;';
-    closeButton.title = 'Close modal';
+    closeButton.title = 'Close modal (ESC)';
+    closeButton.setAttribute('aria-label', 'Close modal');
     closeButton.addEventListener('click', () => {
-        modalOverlay.remove();
+        modalHost.remove();
     });
 
     const responseGrid = document.createElement('div');
@@ -674,13 +695,16 @@ function showMultipleResponsesModal(responses, promptName = 'Custom Prompt') {
         const responseCard = document.createElement('div');
         responseCard.classList.add('lc-response-card');
         responseCard.textContent = response.trim();
-        responseCard.title = 'Click to copy this response';
+        responseCard.title = `Response ${index + 1} - Click to copy`;
+        responseCard.setAttribute('aria-label', `Response ${index + 1} of ${responses.length}`);
+        responseCard.setAttribute('tabindex', '0');
+        responseCard.setAttribute('role', 'button');
 
-        responseCard.addEventListener('click', async () => {
+        const copyResponse = async () => {
             try {
                 await navigator.clipboard.writeText(response.trim());
                 showCopiedMessage();
-                modalOverlay.remove();
+                modalHost.remove();
             } catch (err) {
                 console.error('Error copying text:', err);
                 // Fallback for older browsers
@@ -695,30 +719,329 @@ function showMultipleResponsesModal(responses, promptName = 'Custom Prompt') {
                     document.execCommand('copy');
                     textArea.remove();
                     showCopiedMessage();
-                    modalOverlay.remove();
+                    modalHost.remove();
                 } catch (fallbackErr) {
                     console.error('Fallback copy failed:', fallbackErr);
-                    alert('Failed to copy to clipboard. Please select and copy manually.');
+                    // Create error notification in Shadow DOM
+                    const errorMsg = document.createElement('div');
+                    errorMsg.classList.add('lc-error-message');
+                    errorMsg.textContent = 'Failed to copy. Please try again.';
+                    modalContent.appendChild(errorMsg);
+                    setTimeout(() => errorMsg.remove(), 3000);
                 }
+            }
+        };
+
+        responseCard.addEventListener('click', copyResponse);
+        
+        // Add keyboard support
+        responseCard.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                copyResponse();
             }
         });
 
         responseGrid.appendChild(responseCard);
     });
 
+    // Build modal structure
     modalContent.appendChild(closeButton);
     modalContent.appendChild(title);
     modalContent.appendChild(subtitle);
     modalContent.appendChild(responseGrid);
     modalOverlay.appendChild(modalContent);
-    document.body.appendChild(modalOverlay);
+    shadowRoot.appendChild(modalOverlay);
+    
+    // Add to page
+    document.body.appendChild(modalHost);
 
     // Close modal when clicking outside
     modalOverlay.addEventListener('click', (e) => {
         if (e.target === modalOverlay) {
-            modalOverlay.remove();
+            modalHost.remove();
         }
     });
+    
+    // Focus management for accessibility
+    setTimeout(() => {
+        closeButton.focus();
+    }, 100);
+}
+
+// Get CSS for Shadow DOM modal (isolated from page styles)
+function getModalShadowCSS() {
+    return `
+        /* Reset and base styles */
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        /* Modal Overlay */
+        .lc-modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.6);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 99999;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
+            padding: 20px;
+            pointer-events: auto;
+        }
+
+        /* Modal Content */
+        .lc-modal-content {
+            background-color: white;
+            padding: 24px;
+            border-radius: 12px;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
+            max-width: 90vw;
+            max-height: 90vh;
+            overflow-y: auto;
+            position: relative;
+            min-width: 320px;
+            width: fit-content;
+            animation: lc-modal-appear 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+        }
+
+        @keyframes lc-modal-appear {
+            from {
+                opacity: 0;
+                transform: scale(0.9) translateY(-20px);
+            }
+            to {
+                opacity: 1;
+                transform: scale(1) translateY(0);
+            }
+        }
+
+        /* Close Button */
+        .lc-modal-close-btn {
+            position: absolute;
+            top: 12px;
+            right: 16px;
+            font-size: 28px;
+            cursor: pointer;
+            color: #666;
+            background: none;
+            border: none;
+            padding: 4px;
+            line-height: 1;
+            border-radius: 50%;
+            width: 36px;
+            height: 36px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s ease;
+        }
+
+        .lc-modal-close-btn:hover,
+        .lc-modal-close-btn:focus {
+            color: #333;
+            background-color: #f0f0f0;
+            outline: 2px solid #0a66c2;
+            outline-offset: 2px;
+        }
+
+        /* Modal Title */
+        .lc-modal-title {
+            margin-top: 0;
+            margin-bottom: 8px;
+            color: #0a66c2;
+            font-size: 1.4em;
+            font-weight: 600;
+            text-align: center;
+            padding-right: 40px;
+        }
+
+        .lc-modal-subtitle {
+            color: #666;
+            font-size: 0.9em;
+            text-align: center;
+            margin-bottom: 24px;
+            font-weight: normal;
+        }
+
+        /* Response Grid */
+        .lc-response-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 16px;
+            margin-top: 16px;
+        }
+
+        /* Individual Response Card */
+        .lc-response-card {
+            border: 2px solid #e0e0e0;
+            padding: 18px;
+            border-radius: 8px;
+            background-color: #fafafa;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            font-size: 0.95em;
+            line-height: 1.5;
+            color: #333;
+            position: relative;
+            min-height: 80px;
+            display: flex;
+            align-items: center;
+            text-align: left;
+            border-left: 3px solid transparent;
+        }
+
+        .lc-response-card:hover,
+        .lc-response-card:focus {
+            background-color: #f0f7ff;
+            border-color: #0a66c2;
+            border-left-color: #0a66c2;
+            box-shadow: 0 2px 8px rgba(10, 102, 194, 0.1);
+            transform: translateY(-1px);
+            outline: 2px solid #0a66c2;
+            outline-offset: 2px;
+        }
+
+        .lc-response-card::after {
+            content: "Click to copy";
+            position: absolute;
+            bottom: 8px;
+            right: 8px;
+            font-size: 0.8em;
+            color: #999;
+            opacity: 0;
+            transition: opacity 0.2s ease;
+            pointer-events: none;
+        }
+
+        .lc-response-card:hover::after,
+        .lc-response-card:focus::after {
+            opacity: 1;
+        }
+
+        /* Error Message */
+        .lc-error-message {
+            position: absolute;
+            bottom: -40px;
+            left: 50%;
+            transform: translateX(-50%);
+            background-color: #dc3545;
+            color: white;
+            padding: 8px 16px;
+            border-radius: 4px;
+            font-size: 0.85em;
+            animation: lc-error-appear 0.3s ease-out;
+        }
+
+        @keyframes lc-error-appear {
+            from {
+                opacity: 0;
+                transform: translateX(-50%) translateY(10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(-50%) translateY(0);
+            }
+        }
+
+        /* Responsive Design */
+        @media screen and (max-width: 768px) {
+            .lc-modal-content {
+                margin: 10px;
+                padding: 20px;
+                max-width: calc(100vw - 20px);
+            }
+            
+            .lc-response-grid {
+                grid-template-columns: 1fr;
+                gap: 12px;
+            }
+            
+            .lc-modal-title {
+                font-size: 1.2em;
+                padding-right: 40px;
+            }
+            
+            .lc-response-card {
+                padding: 16px;
+                font-size: 0.9em;
+            }
+        }
+
+        /* Dark mode support */
+        @media (prefers-color-scheme: dark) {
+            .lc-modal-content {
+                background-color: #1e1e1e;
+                color: #ffffff;
+            }
+            
+            .lc-modal-title {
+                color: #70b5f9;
+            }
+            
+            .lc-modal-subtitle {
+                color: #b0b7bf;
+            }
+            
+            .lc-response-card {
+                background-color: #2a2a2a;
+                color: #ffffff;
+                border-color: #444444;
+            }
+            
+            .lc-response-card:hover,
+            .lc-response-card:focus {
+                background-color: #1a3a5c;
+                border-color: #70b5f9;
+                border-left-color: #70b5f9;
+            }
+            
+            .lc-modal-close-btn {
+                color: #b0b7bf;
+            }
+            
+            .lc-modal-close-btn:hover,
+            .lc-modal-close-btn:focus {
+                color: #ffffff;
+                background-color: #404040;
+            }
+        }
+
+        /* High contrast support */
+        @media (prefers-contrast: high) {
+            .lc-modal-content {
+                border: 2px solid #000000;
+            }
+            
+            .lc-response-card {
+                border: 2px solid #000000;
+            }
+        }
+
+        /* Reduced motion support */
+        @media (prefers-reduced-motion: reduce) {
+            .lc-modal-content {
+                animation: none;
+            }
+            
+            .lc-response-card {
+                transition: none;
+            }
+            
+            .lc-response-card:hover,
+            .lc-response-card:focus {
+                transform: none;
+            }
+        }
+    `;
 }
 
 // Function to show "Copied!" message
@@ -738,12 +1061,12 @@ function showCopiedMessage() {
     }, 2000);
 }
 
-// Add global ESC key listener for modal
+// Add global ESC key listener for modal (works with Shadow DOM)
 document.addEventListener('keydown', (event) => {
     if (event.key === 'Escape') {
-        const existingModal = document.querySelector('.lc-modal-overlay');
-        if (existingModal) {
-            existingModal.remove();
+        const modalHost = document.getElementById('lc-modal-host');
+        if (modalHost) {
+            modalHost.remove();
         }
     }
 });

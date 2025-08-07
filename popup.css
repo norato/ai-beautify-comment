@@ -112,6 +112,7 @@ h2 {
 .form-group {
     position: relative;
     display: flex;
+    flex-direction: column;
     align-items: center;
     margin-bottom: 16px;
 }
@@ -130,7 +131,8 @@ h2 {
     border-color: #0a66c2;
 }
 
-.toggle-btn {
+/* API Key visibility toggle button */
+.form-group .toggle-btn {
     position: absolute;
     right: 8px;
     background: none;
@@ -142,8 +144,26 @@ h2 {
     transition: opacity 0.2s;
 }
 
-.toggle-btn:hover {
+/* Custom prompt toggle buttons (enable/disable) - use normal flow */
+.prompt-actions .toggle-btn {
+    background: none;
+    border: 1px solid #0a66c2;
+    color: #0a66c2;
+    padding: 6px 10px;
+    border-radius: 4px;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.form-group .toggle-btn:hover {
     opacity: 1;
+}
+
+.prompt-actions .toggle-btn:hover {
+    background: #0a66c2;
+    color: white;
 }
 
 .save-btn {
@@ -291,10 +311,26 @@ ol li {
     margin-bottom: 12px;
 }
 
-.prompt-actions {
+/* Individual prompt item actions */
+.prompt-item .prompt-actions {
     display: flex;
     gap: 8px;
     align-items: center;
+}
+
+/* Add/limit prompt actions container - outside custom prompts */
+.prompt-actions:not(.prompt-item .prompt-actions) {
+    background: white;
+    border-radius: 8px;
+    padding: 16px;
+    margin-bottom: 20px;
+    box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.08);
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    justify-content: center;
+    gap: 12px;
+    min-height: 60px;
 }
 
 .prompt-actions button {
@@ -325,17 +361,6 @@ ol li {
     background: #c82333;
 }
 
-.prompt-actions .toggle-btn {
-    background: none;
-    border: 1px solid #0a66c2;
-    color: #0a66c2;
-    padding: 6px 10px;
-}
-
-.prompt-actions .toggle-btn:hover {
-    background: #0a66c2;
-    color: white;
-}
 
 /* Prompt Form Container */
 .prompt-form-container {
@@ -358,6 +383,18 @@ ol li {
     margin-bottom: 16px;
 }
 
+.prompt-form-container .form-group.inline {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    align-items: start;
+}
+
+.prompt-form-container .form-group.inline > div {
+    display: flex;
+    flex-direction: column;
+}
+
 .prompt-form-container label {
     font-size: 14px;
     font-weight: 600;
@@ -374,6 +411,14 @@ ol li {
     border: 1px solid #e0e0e0;
     border-radius: 4px;
     transition: border-color 0.2s;
+}
+
+/* Responsive layout for smaller screens */
+@media (max-width: 500px) {
+    .prompt-form-container .form-group.inline {
+        grid-template-columns: 1fr;
+        gap: 12px;
+    }
 }
 
 .prompt-form-container input:focus,
@@ -428,7 +473,9 @@ ol li {
 }
 
 .add-btn {
-    width: 100%;
+    align-self: center;
+    width: auto;
+    min-width: 200px;
     background: #28a745;
     color: white;
     padding: 12px 24px;
@@ -438,7 +485,7 @@ ol li {
     font-weight: 600;
     cursor: pointer;
     transition: background-color 0.2s;
-    margin-bottom: 12px;
+    margin: 0;
 }
 
 .add-btn:hover {
@@ -457,6 +504,21 @@ ol li {
     margin-bottom: 16px;
 }
 
+/* When prompt limit message is inside .prompt-actions container */
+.prompt-actions .prompt-limit-message {
+    background: #fff5f5;
+    border: 1px solid #f8d7da;
+    border-left: 3px solid #dc3545;
+    border-radius: 4px;
+    box-shadow: none;
+    padding: 12px;
+    margin: 0;
+    color: #dc3545;
+    text-align: center;
+    font-style: italic;
+    font-size: 14px;
+}
+
 .prompt-limit-message {
     color: #dc3545;
     border-left: 3px solid #dc3545;
@@ -472,14 +534,36 @@ ol li {
 }
 
 .global-settings .form-group {
-    flex-direction: row;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+}
+
+.global-settings .form-group > div:first-child {
+    display: flex;
     align-items: center;
     gap: 12px;
+    flex-wrap: wrap;
 }
 
 .global-settings input[type="number"] {
     width: 60px;
     text-align: center;
+    flex-shrink: 0;
+}
+
+.global-settings label {
+    font-size: 14px;
+    font-weight: 600;
+    color: #333;
+    flex-shrink: 0;
+}
+
+.global-settings .help-text {
+    font-size: 12px;
+    color: #888;
+    line-height: 1.4;
+    margin-top: 8px;
 }
 
 .save-btn.small {

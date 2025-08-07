@@ -108,6 +108,7 @@ async function handleCustomPromptGeneration(selectedText, tab, promptId) {
         message: `Generating ${customPrompt.responseCount} responses...`
       }, (response) => {
         if (chrome.runtime.lastError) {
+          console.warn(`Could not send loading notification to tab ${tab.id}: ${chrome.runtime.lastError.message}`);
           showFallbackNotification('Generating Responses', `Please wait while we generate ${customPrompt.responseCount} responses...`);
         }
       });
@@ -119,18 +120,52 @@ async function handleCustomPromptGeneration(selectedText, tab, promptId) {
     // Generate multiple comments
     const responses = await generateMultipleComments(selectedText, apiKey, customPrompt);
     
-    // Send responses to content script for display
-    chrome.tabs.sendMessage(tab.id, {
-      action: 'showMultipleResponses',
-      responses: responses,
-      requestId: requestId,
-      promptName: customPrompt.name
-    }, (response) => {
-      if (chrome.runtime.lastError) {
-        console.error('Tab communication error:', chrome.runtime.lastError);
-        showFallbackNotification('Error', 'Failed to display responses');
-      }
-    });
+    // Handle response based on count: auto-copy for 1, show modal for multiple
+    if (customPrompt.responseCount === 1) {
+      // Auto-copy single response
+      chrome.tabs.sendMessage(tab.id, {
+        action: 'copyToClipboard',
+        text: responses[0],
+        requestId: requestId
+      }, async (response) => {
+        if (chrome.runtime.lastError) {
+          console.warn(`Could not copy comment to clipboard on tab ${tab.id}: ${chrome.runtime.lastError.message}`);
+          await showFallbackNotification('Error', 'Failed to copy comment to clipboard');
+          return;
+        }
+        
+        if (response && response.success) {
+          // Show success notification
+          chrome.tabs.sendMessage(tab.id, {
+            action: 'showSuccess',
+            requestId: requestId
+          }, (_) => {
+            if (chrome.runtime.lastError) {
+              console.warn(`Could not show success notification on tab ${tab.id}: ${chrome.runtime.lastError.message}`);
+              showFallbackNotification(`${customPrompt.name} Generated!`, 'The comment has been copied to your clipboard.');
+            }
+          });
+        } else {
+          throw { 
+            type: ErrorTypes.CLIPBOARD_ERROR, 
+            message: ErrorMessages[ErrorTypes.CLIPBOARD_ERROR] 
+          };
+        }
+      });
+    } else {
+      // Show modal for multiple responses
+      chrome.tabs.sendMessage(tab.id, {
+        action: 'showMultipleResponses',
+        responses: responses,
+        requestId: requestId,
+        promptName: customPrompt.name
+      }, (response) => {
+        if (chrome.runtime.lastError) {
+          console.warn(`Could not display responses on tab ${tab.id}: ${chrome.runtime.lastError.message}`);
+          showFallbackNotification('Error', 'Failed to display responses');
+        }
+      });
+    }
     
   } catch (error) {
     console.error('Error generating custom prompt responses:', error);
@@ -153,6 +188,7 @@ async function handleCustomPromptGeneration(selectedText, tab, promptId) {
       requestId: requestId
     }, (_) => {
       if (chrome.runtime.lastError) {
+        console.warn(`Could not show error notification on tab ${tab.id}: ${chrome.runtime.lastError.message}`);
         showFallbackNotification('Error', errorMessage);
       }
     });
@@ -165,7 +201,7 @@ async function handleCommentGeneration(selectedText, tab) {
   
   try {
     const settings = await getSettings();
-    const { apiKey } = settings;
+    const { apiKey, defaultResponseCount = 3 } = settings;
     
     if (!apiKey) {
       throw { 
@@ -178,9 +214,11 @@ async function handleCommentGeneration(selectedText, tab) {
     try {
       chrome.tabs.sendMessage(tab.id, {
         action: 'showLoading',
-        requestId: requestId
+        requestId: requestId,
+        message: `Generating ${defaultResponseCount} response${defaultResponseCount > 1 ? 's' : ''}...`
       }, (response) => {
         if (chrome.runtime.lastError) {
+          console.warn(`Could not send loading notification to tab ${tab.id}: ${chrome.runtime.lastError.message}`);
           showFallbackNotification('Generating Comment', 'Please wait while we generate your comment...');
         }
       });
@@ -189,40 +227,62 @@ async function handleCommentGeneration(selectedText, tab) {
       showFallbackNotification('Generating Comment', 'Please wait while we generate your comment...');
     }
     
-    // Generate comment using OpenAI API with retry logic
-    const comment = await retryWithBackoff(() => 
-      generateComment(selectedText, apiKey)
-    );
+    // Create a pseudo custom prompt for default behavior to reuse existing multi-response logic
+    const defaultPrompt = {
+      name: 'Default LinkedIn Comment',
+      promptText: 'Generate thoughtful, professional LinkedIn comments that add meaningful insights or perspectives to the discussion. Ask thoughtful questions when appropriate and share relevant experiences when fitting.',
+      responseCount: defaultResponseCount
+    };
     
-    // Send comment to content script for clipboard
-    chrome.tabs.sendMessage(tab.id, {
-      action: 'copyToClipboard',
-      text: comment,
-      requestId: requestId
-    }, async (response) => {
-      if (chrome.runtime.lastError) {
-        console.error('Tab communication error:', chrome.runtime.lastError);
-        await showFallbackNotification('Error', 'Failed to copy comment to clipboard');
-        return;
-      }
-      
-      if (response && response.success) {
-        // Show success notification
-        chrome.tabs.sendMessage(tab.id, {
-          action: 'showSuccess',
-          requestId: requestId
-        }, (_) => {
-          if (chrome.runtime.lastError) {
-            showFallbackNotification('Comment Generated!', 'The comment has been copied to your clipboard.');
-          }
-        });
-      } else {
-        throw { 
-          type: ErrorTypes.CLIPBOARD_ERROR, 
-          message: ErrorMessages[ErrorTypes.CLIPBOARD_ERROR] 
-        };
-      }
-    });
+    // Generate multiple comments using the same logic as custom prompts
+    const responses = await generateMultipleComments(selectedText, apiKey, defaultPrompt);
+    
+    // Handle response based on count: auto-copy for 1, show modal for multiple
+    if (defaultResponseCount === 1) {
+      // Auto-copy single response
+      chrome.tabs.sendMessage(tab.id, {
+        action: 'copyToClipboard',
+        text: responses[0],
+        requestId: requestId
+      }, async (response) => {
+        if (chrome.runtime.lastError) {
+          console.warn(`Could not copy comment to clipboard on tab ${tab.id}: ${chrome.runtime.lastError.message}`);
+          await showFallbackNotification('Error', 'Failed to copy comment to clipboard');
+          return;
+        }
+        
+        if (response && response.success) {
+          // Show success notification
+          chrome.tabs.sendMessage(tab.id, {
+            action: 'showSuccess',
+            requestId: requestId
+          }, (_) => {
+            if (chrome.runtime.lastError) {
+              console.warn(`Could not show success notification on tab ${tab.id}: ${chrome.runtime.lastError.message}`);
+              showFallbackNotification('Comment Generated!', 'The comment has been copied to your clipboard.');
+            }
+          });
+        } else {
+          throw { 
+            type: ErrorTypes.CLIPBOARD_ERROR, 
+            message: ErrorMessages[ErrorTypes.CLIPBOARD_ERROR] 
+          };
+        }
+      });
+    } else {
+      // Show modal for multiple responses
+      chrome.tabs.sendMessage(tab.id, {
+        action: 'showMultipleResponses',
+        responses: responses,
+        requestId: requestId,
+        promptName: defaultPrompt.name
+      }, (response) => {
+        if (chrome.runtime.lastError) {
+          console.warn(`Could not display responses on tab ${tab.id}: ${chrome.runtime.lastError.message}`);
+          showFallbackNotification('Error', 'Failed to display responses');
+        }
+      });
+    }
     
   } catch (error) {
     console.error('Error generating comment:', error);
@@ -246,6 +306,7 @@ async function handleCommentGeneration(selectedText, tab) {
       requestId: requestId
     }, (_) => {
       if (chrome.runtime.lastError) {
+        console.warn(`Could not show error notification on tab ${tab.id}: ${chrome.runtime.lastError.message}`);
         showFallbackNotification('Error', errorMessage);
       }
     });
@@ -289,10 +350,150 @@ async function showFallbackNotification(title, message) {
   }
 }
 
-// Function to generate multiple comments in parallel
+// Function to generate multiple comments using JSON prompt engineering (single API call)
 async function generateMultipleComments(selectedText, apiKey, customPrompt) {
   const numResponses = customPrompt.responseCount;
+  
+  try {
+    // Use single API call with JSON prompt engineering for better performance
+    const responses = await generateMultipleCommentsWithJSON(selectedText, apiKey, customPrompt, numResponses);
+    
+    if (!responses || responses.length === 0) {
+      throw new Error('Failed to generate any responses');
+    }
+    
+    return responses;
+  } catch (error) {
+    console.warn('JSON approach failed, falling back to multiple API calls:', error);
+    
+    // Fallback to original approach if JSON parsing fails
+    return await generateMultipleCommentsLegacy(selectedText, apiKey, customPrompt);
+  }
+}
+
+// New function: Generate multiple comments using JSON prompt engineering
+async function generateMultipleCommentsWithJSON(selectedText, apiKey, customPrompt, numResponses) {
+  // Detect language of the post
+  const detectedLanguage = detectLanguage(selectedText);
+  const languageName = getLanguageName(detectedLanguage);
+  
+  // Construct JSON prompt with custom text
+  const jsonPrompt = `You are a thoughtful LinkedIn professional. Generate ${numResponses} unique LinkedIn comment suggestions for the following post.
+
+STRICT FORMATTING RULES:
+- Respond ONLY with a valid JSON object
+- The JSON object must have a single key called "sugestoes"
+- The value of "sugestoes" must be an array of ${numResponses} strings
+- Each string must be a unique, professional LinkedIn comment
+- Do not include any explanation, markdown, or additional text
+- Do not wrap in \`\`\`json blocks
+
+CONTENT GUIDELINES:
+${customPrompt.promptText}
+
+RESPONSE GUIDELINES:
+- The post appears to be in ${languageName} - respond in the same language
+- Keep responses concise (2-3 sentences maximum)
+- Be specific, add value, and keep it authentic
+- Make each suggestion unique and different from the others
+- Maintain a professional yet personable tone
+
+POST CONTENT: "${selectedText}"
+
+Example format for ${numResponses} responses:
+{
+  "sugestoes": [
+    "First unique comment here",
+    "Second unique comment here"${numResponses > 2 ? ',\n    "Third unique comment here"' : ''}${numResponses > 3 ? ',\n    "Fourth unique comment here"' : ''}${numResponses > 4 ? ',\n    "Fifth unique comment here"' : ''}
+  ]
+}`;
+
+  try {
+    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        contents: [{
+          parts: [{
+            text: jsonPrompt
+          }]
+        }],
+        generationConfig: {
+          temperature: 0.8,
+          topK: 40,
+          topP: 0.9,
+          maxOutputTokens: 500, // Increased for multiple responses
+        },
+        safetySettings: [
+          {
+            category: 'HARM_CATEGORY_HARASSMENT',
+            threshold: 'BLOCK_MEDIUM_AND_ABOVE'
+          },
+          {
+            category: 'HARM_CATEGORY_HATE_SPEECH',
+            threshold: 'BLOCK_MEDIUM_AND_ABOVE'
+          },
+          {
+            category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT',
+            threshold: 'BLOCK_MEDIUM_AND_ABOVE'
+          },
+          {
+            category: 'HARM_CATEGORY_DANGEROUS_CONTENT',
+            threshold: 'BLOCK_MEDIUM_AND_ABOVE'
+          }
+        ]
+      })
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      const error = parseGeminiError({
+        response: {
+          status: response.status,
+          data: errorData,
+          headers: response.headers
+        }
+      });
+      throw error;
+    }
+
+    const data = await response.json();
+    
+    if (data.candidates && data.candidates[0] && data.candidates[0].content && data.candidates[0].content.parts[0]) {
+      const responseText = data.candidates[0].content.parts[0].text.trim();
+      
+      try {
+        // Parse JSON response
+        const jsonResponse = JSON.parse(responseText);
+        
+        if (jsonResponse && Array.isArray(jsonResponse.sugestoes) && jsonResponse.sugestoes.length > 0) {
+          return jsonResponse.sugestoes.slice(0, numResponses); // Ensure we don't exceed requested count
+        } else {
+          throw new Error('Invalid JSON format: missing or empty sugestoes array');
+        }
+      } catch (parseError) {
+        console.error('JSON parsing failed:', parseError, 'Raw response:', responseText);
+        throw new Error(`Failed to parse JSON response: ${parseError.message}`);
+      }
+    } else {
+      console.error('Unexpected Gemini response format:', data);
+      throw new Error('Unexpected response format from Gemini API');
+    }
+    
+  } catch (error) {
+    console.error('JSON Gemini API error:', error);
+    throw error;
+  }
+}
+
+// Legacy function: Generate multiple comments using multiple API calls (fallback)
+async function generateMultipleCommentsLegacy(selectedText, apiKey, customPrompt) {
+  const numResponses = customPrompt.responseCount;
   const promises = [];
+  
+  console.log(`Falling back to ${numResponses} separate API calls`);
   
   // Create promises for parallel API calls
   for (let i = 0; i < numResponses; i++) {
@@ -318,7 +519,7 @@ async function generateMultipleComments(selectedText, apiKey, customPrompt) {
     
     return successfulResponses;
   } catch (error) {
-    console.error('Error generating multiple comments:', error);
+    console.error('Error generating multiple comments with legacy approach:', error);
     throw error;
   }
 }

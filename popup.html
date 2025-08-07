@@ -1,131 +1,289 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0"
+    />
     <title>GPT LinkedIn Commenter</title>
-    <link rel="stylesheet" href="popup.css">
-</head>
-<body>
+    <link
+      rel="stylesheet"
+      href="popup.css"
+    />
+  </head>
+  <body>
     <div class="container">
-        <div id="update-banner" style="display:none; padding: 10px; background-color: #fff3e0; border: 1px solid #ffe0b2; border-radius: 4px; margin-bottom: 15px; text-align: center; font-size: 13px;">
-            <!-- Update notification will be inserted here -->
+      <div
+        id="update-banner"
+        style="
+          display: none;
+          padding: 10px;
+          background-color: #fff3e0;
+          border: 1px solid #ffe0b2;
+          border-radius: 4px;
+          margin-bottom: 15px;
+          text-align: center;
+          font-size: 13px;
+        "
+      >
+        <!-- Update notification will be inserted here -->
+      </div>
+
+      <header>
+        <h1>Gemini LinkedIn Commenter</h1>
+        <p class="subtitle">
+          Generate professional LinkedIn comments with Gemini AI
+        </p>
+      </header>
+
+      <div class="tab-buttons">
+        <button
+          id="apiKeyTabBtn"
+          class="tab-button active"
+        >
+          API Key
+        </button>
+        <button
+          id="customPromptsTabBtn"
+          class="tab-button"
+        >
+          Custom Prompts
+        </button>
+      </div>
+
+      <main>
+        <!-- API Key Tab -->
+        <div
+          id="apiKeyTabContent"
+          class="tab-content active"
+        >
+          <div class="api-key-section">
+            <h2>Gemini API Key</h2>
+            <p class="description">
+              Enter your Google Gemini API key to enable comment generation
+            </p>
+
+            <form id="apiKeyForm">
+              <div class="form-group">
+                <input
+                  type="password"
+                  id="apiKeyInput"
+                  placeholder="AIzaSy..."
+                  required
+                  autocomplete="off"
+                />
+                <button
+                  type="button"
+                  id="toggleVisibility"
+                  class="toggle-btn"
+                  aria-label="Toggle API key visibility"
+                >
+                  👁️
+                </button>
+              </div>
+
+              <button
+                type="submit"
+                class="save-btn"
+              >
+                Save API Key
+              </button>
+            </form>
+
+            <div
+              id="status"
+              class="status"
+            ></div>
+          </div>
+
+          <div class="instructions">
+            <h3>How to use:</h3>
+            <ol>
+              <li>
+                Get your
+                <a
+                  href="https://aistudio.google.com/app/apikey"
+                  target="_blank"
+                  >Gemini API key</a
+                >
+                and save it above
+              </li>
+              <li>Go to any LinkedIn post</li>
+              <li>Select the post text</li>
+              <li>Right-click and choose a prompt option</li>
+              <li>Choose from the generated responses</li>
+            </ol>
+          </div>
+
+          <div class="footer">
+            <p>
+              Need an API key?
+              <a
+                href="https://aistudio.google.com/app/apikey"
+                target="_blank"
+                >Get one here</a
+              >
+            </p>
+          </div>
         </div>
-        
-        <header>
-            <h1>Gemini LinkedIn Commenter</h1>
-            <p class="subtitle">Generate professional LinkedIn comments with Gemini AI</p>
-        </header>
-        
-        <div class="tab-buttons">
-            <button id="apiKeyTabBtn" class="tab-button active">API Key</button>
-            <button id="customPromptsTabBtn" class="tab-button">Custom Prompts</button>
-        </div>
-        
-        <main>
-            <!-- API Key Tab -->
-            <div id="apiKeyTabContent" class="tab-content active">
-                <div class="api-key-section">
-                    <h2>Gemini API Key</h2>
-                    <p class="description">Enter your Google Gemini API key to enable comment generation</p>
-                    
-                    <form id="apiKeyForm">
-                        <div class="form-group">
-                            <input 
-                                type="password" 
-                                id="apiKeyInput" 
-                                placeholder="AIzaSy..." 
-                                required
-                                autocomplete="off"
-                            />
-                            <button type="button" id="toggleVisibility" class="toggle-btn" aria-label="Toggle API key visibility">
-                                👁️
-                            </button>
-                        </div>
-                        
-                        <button type="submit" class="save-btn">Save API Key</button>
-                    </form>
-                    
-                    <div id="status" class="status"></div>
-                </div>
-                
-                <div class="instructions">
-                    <h3>How to use:</h3>
-                    <ol>
-                        <li>Get your <a href="https://aistudio.google.com/app/apikey" target="_blank">Gemini API key</a> and save it above</li>
-                        <li>Go to any LinkedIn post</li>
-                        <li>Select the post text</li>
-                        <li>Right-click and choose a prompt option</li>
-                        <li>Choose from the generated responses</li>
-                    </ol>
-                </div>
-                
-                <div class="footer">
-                    <p>Need an API key? <a href="https://aistudio.google.com/app/apikey" target="_blank">Get one here</a></p>
-                </div>
+
+        <!-- Custom Prompts Tab -->
+        <div
+          id="customPromptsTabContent"
+          class="tab-content"
+        >
+          <h2>Custom Prompts</h2>
+          <p class="description">
+            Create up to 5 custom prompts for different types of LinkedIn
+            comments
+          </p>
+
+          <div id="promptsList">
+            <div class="no-prompts-message">
+              No custom prompts yet. Add one below!
+            </div>
+          </div>
+
+          <div
+            id="promptFormContainer"
+            class="prompt-form-container"
+            style="display: none"
+          >
+            <h3><span id="formTitle">Add New Prompt</span></h3>
+            <input
+              type="hidden"
+              id="promptId"
+            />
+
+            <div class="form-group">
+              <label for="promptName"
+                >Prompt Name (appears in context menu):</label
+              >
+              <input
+                type="text"
+                id="promptName"
+                maxlength="50"
+                placeholder="e.g., Professional Insight"
+                required
+              />
             </div>
 
-            <!-- Custom Prompts Tab -->
-            <div id="customPromptsTabContent" class="tab-content">
-                <h2>Custom Prompts</h2>
-                <p class="description">Create up to 5 custom prompts for different types of LinkedIn comments</p>
-                
-                <div id="promptsList">
-                    <div class="no-prompts-message">No custom prompts yet. Add one below!</div>
-                </div>
-
-                <div id="promptFormContainer" class="prompt-form-container" style="display: none;">
-                    <h3><span id="formTitle">Add New Prompt</span></h3>
-                    <input type="hidden" id="promptId">
-                    
-                    <div class="form-group">
-                        <label for="promptName">Prompt Name (appears in context menu):</label>
-                        <input type="text" id="promptName" maxlength="50" placeholder="e.g., Professional Insight" required>
-                    </div>
-
-                    <div class="form-group">
-                        <label for="promptText">Prompt Instructions:</label>
-                        <textarea id="promptText" rows="4" placeholder="Provide instructions for the AI. The selected text will be automatically included." required></textarea>
-                        <small class="help-text">Example: "Generate a thoughtful professional insight that adds value to the discussion"</small>
-                    </div>
-
-                    <div class="form-group">
-                        <label for="responseCount">Number of Responses (1-5):</label>
-                        <input type="number" id="responseCount" min="1" max="5" value="3" required>
-                    </div>
-
-                    <div class="form-group">
-                        <label class="checkbox-label">
-                            <input type="checkbox" id="promptEnabled" checked>
-                            <span>Enabled (show in context menu)</span>
-                        </label>
-                    </div>
-
-                    <div class="form-actions">
-                        <button id="savePromptBtn" class="save-btn">Save Prompt</button>
-                        <button id="cancelPromptBtn" class="cancel-btn">Cancel</button>
-                    </div>
-                </div>
-
-                <div class="prompt-actions">
-                    <button id="addPromptBtn" class="add-btn">Add New Prompt</button>
-                    <div class="prompt-limit-message" style="display: none;">
-                        You've reached the limit of 5 custom prompts.
-                    </div>
-                </div>
-
-                <div class="global-settings">
-                    <h3>Global Settings</h3>
-                    <div class="form-group">
-                        <label for="defaultResponseCount">Default Number of Responses:</label>
-                        <input type="number" id="defaultResponseCount" min="1" max="5" value="3">
-                        <button id="saveDefaultBtn" class="save-btn small">Save</button>
-                    </div>
-                </div>
+            <div class="form-group">
+              <label for="promptText">Prompt Instructions:</label>
+              <textarea
+                id="promptText"
+                rows="4"
+                placeholder="Provide instructions for the AI. The selected text will be automatically included."
+                required
+              ></textarea>
+              <small class="help-text"
+                >Example: "Generate a thoughtful professional insight that adds
+                value to the discussion"</small
+              >
             </div>
-        </main>
+
+            <div class="form-group inline">
+              <div>
+                <label for="responseCount">Number of Responses (1-5):</label>
+                <input
+                  type="number"
+                  id="responseCount"
+                  min="1"
+                  max="5"
+                  value="3"
+                  required
+                />
+                <small class="help-text"
+                  >1 response = auto-copy to clipboard, 2+ responses = modal to
+                  choose from options</small
+                >
+              </div>
+              
+              <div>
+                <label class="checkbox-label">
+                  <input
+                    type="checkbox"
+                    id="promptEnabled"
+                    checked
+                  />
+                  <span>Enabled (show in context menu)</span>
+                </label>
+                <small class="help-text"
+                  >Disabled prompts won't appear in the right-click context menu</small
+                >
+              </div>
+            </div>
+
+            <div class="form-actions">
+              <button
+                id="savePromptBtn"
+                class="save-btn"
+              >
+                Save Prompt
+              </button>
+              <button
+                id="cancelPromptBtn"
+                class="cancel-btn"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+
+          <div class="prompt-actions">
+            <button
+              id="addPromptBtn"
+              class="add-btn"
+            >
+              Add New Prompt
+            </button>
+            <div
+              class="prompt-limit-message"
+              style="display: none"
+            >
+              You've reached the limit of 5 custom prompts.
+            </div>
+          </div>
+
+          <div class="global-settings">
+            <h3>Global Settings</h3>
+            <div class="form-group">
+              <div>
+                <label for="defaultResponseCount"
+                  >Default Number of Responses:</label
+                >
+                <input
+                  type="number"
+                  id="defaultResponseCount"
+                  min="1"
+                  max="5"
+                  value="3"
+                />
+                <button
+                  id="saveDefaultBtn"
+                  class="save-btn small"
+                >
+                  Save
+                </button>
+              </div>
+              <div>
+                <small class="help-text"
+                  >This setting applies only to the default "Generate LinkedIn
+                  Comment" option. Custom prompts have their own response count
+                  settings.<br />
+                  <strong>Note:</strong> When set to 1 response, the comment
+                  will be automatically copied to clipboard. When set to 2+
+                  responses, you'll see a modal to choose from multiple
+                  options.</small
+                >
+              </div>
+            </div>
+          </div>
+        </div>
+      </main>
     </div>
-    
+
     <script src="popup.js"></script>
-</body>
+  </body>
 </html>

@@ -22,7 +22,8 @@
   
   "host_permissions": [
     "https://*.linkedin.com/*",
-    "https://raw.githubusercontent.com/*"
+    "https://raw.githubusercontent.com/*",
+    "https://generativelanguage.googleapis.com/*"
   ],
   
   "background": {

@@ -364,7 +364,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         const submitButton = apiKeyForm.querySelector('.save-btn');
         const originalText = submitButton.textContent;
         submitButton.disabled = true;
-        submitButton.innerHTML = 'Validating<span class="spinner"></span>';
+        submitButton.innerHTML = 'Validating...<span class="spinner"></span>';
         
         try {
             // Test the API key with a minimal request
@@ -405,7 +405,13 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Function to validate API key
     async function validateApiKey(apiKey) {
         try {
-            const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`, {
+            showStatus('Connecting to Gemini API...', 'loading');
+            
+            const timeoutPromise = new Promise((_, reject) => 
+                setTimeout(() => reject(new Error('Request timeout - API took too long to respond')), 10000)
+            );
+            
+            const fetchPromise = fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
@@ -419,9 +425,30 @@ document.addEventListener('DOMContentLoaded', async () => {
                 })
             });
             
-            return response.ok;
+            const response = await Promise.race([fetchPromise, timeoutPromise]);
+            
+            if (response.ok) {
+                return true;
+            } else if (response.status === 400) {
+                showStatus('API key format is valid but request failed. This may be normal during validation.', 'error');
+                return true; // Accept 400 as valid key format
+            } else if (response.status === 401 || response.status === 403) {
+                showStatus('Invalid or expired API key. Please check your key.', 'error');
+                return false;
+            } else {
+                showStatus(`API responded with status ${response.status}. Please try again.`, 'error');
+                return false;
+            }
+            
         } catch (error) {
             console.error('API validation error:', error);
+            if (error.message.includes('timeout')) {
+                showStatus('Connection timeout. Please check your internet connection and try again.', 'error');
+            } else if (error.message.includes('Failed to fetch')) {
+                showStatus('Unable to reach Gemini API. Please check your internet connection.', 'error');
+            } else {
+                showStatus('Network error: ' + error.message, 'error');
+            }
             return false;
         }
     }
