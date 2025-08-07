@@ -155,6 +155,180 @@ function getLanguageName(code) {
     return languages[code] || 'English';
 }
 
+// Storage management functions for custom prompts and settings
+const SYNC_STORAGE_LIMIT_BYTES = 100 * 1024; // 100 KB
+
+// Generate UUID v4 (simple implementation without external library)
+function generateUUID() {
+    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+        const r = Math.random() * 16 | 0;
+        const v = c === 'x' ? r : (r & 0x3 | 0x8);
+        return v.toString(16);
+    });
+}
+
+// Get all settings from storage
+async function getSettings() {
+    try {
+        const result = await chrome.storage.sync.get();
+        
+        // Check if we have the new structure
+        if (result.customPrompts !== undefined) {
+            return {
+                apiKey: result.apiKey || '',
+                customPrompts: result.customPrompts || [],
+                defaultResponseCount: result.defaultResponseCount || 3
+            };
+        }
+        
+        // Legacy structure - migrate
+        return {
+            apiKey: result.apiKey || '',
+            customPrompts: [],
+            defaultResponseCount: 3
+        };
+    } catch (error) {
+        console.error('Error getting settings:', error);
+        return {
+            apiKey: '',
+            customPrompts: [],
+            defaultResponseCount: 3
+        };
+    }
+}
+
+// Save settings with storage limit validation
+async function saveSettings(settings) {
+    try {
+        const settingsString = JSON.stringify(settings);
+        const settingsSize = new TextEncoder().encode(settingsString).length;
+
+        if (settingsSize > SYNC_STORAGE_LIMIT_BYTES) {
+            const sizeMB = (settingsSize / 1024).toFixed(2);
+            const limitMB = (SYNC_STORAGE_LIMIT_BYTES / 1024).toFixed(2);
+            console.error(`Storage limit exceeded! Current size: ${sizeMB}KB. Max: ${limitMB}KB.`);
+            throw new Error('Storage limit exceeded. Please reduce the number or length of your custom prompts.');
+        }
+
+        await chrome.storage.sync.set(settings);
+        console.log('Settings saved successfully.');
+    } catch (error) {
+        console.error('Error saving settings:', error);
+        throw error;
+    }
+}
+
+// Update settings partially
+async function updateSettings(partialSettings) {
+    const currentSettings = await getSettings();
+    const updatedSettings = { ...currentSettings, ...partialSettings };
+    await saveSettings(updatedSettings);
+}
+
+// Add a new custom prompt
+async function addPrompt(promptData) {
+    const currentSettings = await getSettings();
+    
+    // Limit to 5 custom prompts max
+    if (currentSettings.customPrompts.length >= 5) {
+        throw new Error('Maximum of 5 custom prompts allowed.');
+    }
+    
+    const newPrompt = {
+        id: generateUUID(),
+        name: promptData.name || 'Unnamed Prompt',
+        promptText: promptData.promptText || '',
+        responseCount: promptData.responseCount || currentSettings.defaultResponseCount,
+        enabled: promptData.enabled !== undefined ? promptData.enabled : true
+    };
+    
+    currentSettings.customPrompts.push(newPrompt);
+    await saveSettings(currentSettings);
+    return newPrompt;
+}
+
+// Update an existing prompt
+async function updatePrompt(id, updatedPromptData) {
+    const currentSettings = await getSettings();
+    const index = currentSettings.customPrompts.findIndex(p => p.id === id);
+    
+    if (index === -1) {
+        console.warn(`Prompt with ID ${id} not found.`);
+        return false;
+    }
+    
+    currentSettings.customPrompts[index] = {
+        ...currentSettings.customPrompts[index],
+        ...updatedPromptData
+    };
+    
+    await saveSettings(currentSettings);
+    return true;
+}
+
+// Delete a prompt
+async function deletePrompt(id) {
+    const currentSettings = await getSettings();
+    const originalLength = currentSettings.customPrompts.length;
+    
+    currentSettings.customPrompts = currentSettings.customPrompts.filter(p => p.id !== id);
+    
+    if (currentSettings.customPrompts.length === originalLength) {
+        console.warn(`Prompt with ID ${id} not found.`);
+        return false;
+    }
+    
+    await saveSettings(currentSettings);
+    return true;
+}
+
+// Get enabled prompts for context menu
+async function getEnabledPrompts() {
+    const settings = await getSettings();
+    return settings.customPrompts.filter(p => p.enabled);
+}
+
+// Migration function for existing users
+async function migrateStorage() {
+    try {
+        const result = await chrome.storage.sync.get();
+        
+        // Check if migration is needed
+        if (result.customPrompts === undefined && result.apiKey !== undefined) {
+            console.log('Migrating storage for existing user...');
+            
+            const migratedSettings = {
+                apiKey: result.apiKey,
+                customPrompts: [],
+                defaultResponseCount: 3
+            };
+            
+            await saveSettings(migratedSettings);
+            console.log('Storage migration completed successfully.');
+            return true;
+        } else if (result.customPrompts === undefined && result.apiKey === undefined) {
+            // New installation
+            console.log('Initializing storage for new installation...');
+            
+            const defaultSettings = {
+                apiKey: '',
+                customPrompts: [],
+                defaultResponseCount: 3
+            };
+            
+            await saveSettings(defaultSettings);
+            console.log('Storage initialized for new installation.');
+            return true;
+        }
+        
+        console.log('No storage migration needed.');
+        return false;
+    } catch (error) {
+        console.error('Error during storage migration:', error);
+        return false;
+    }
+}
+
 // Export for use in other scripts
 if (typeof module !== 'undefined' && module.exports) {
     module.exports = {
@@ -166,6 +340,16 @@ if (typeof module !== 'undefined' && module.exports) {
         retryWithBackoff,
         sleep,
         detectLanguage,
-        getLanguageName
+        getLanguageName,
+        // Storage functions
+        getSettings,
+        saveSettings,
+        updateSettings,
+        addPrompt,
+        updatePrompt,
+        deletePrompt,
+        getEnabledPrompts,
+        migrateStorage,
+        generateUUID
     };
 }

@@ -8,7 +8,16 @@ try {
 }
 
 // Extension lifecycle handlers
-chrome.runtime.onInstalled.addListener((details) => {
+chrome.runtime.onInstalled.addListener(async (details) => {
+  // Initialize or migrate storage based on installation type
+  if (details.reason === 'install') {
+    console.log('Extension installed - initializing storage');
+    await migrateStorage();
+  } else if (details.reason === 'update') {
+    console.log('Extension updated - checking for storage migration');
+    await migrateStorage();
+  }
+  
   createContextMenu();
   
   chrome.action.setIcon({
@@ -23,16 +32,33 @@ chrome.runtime.onStartup.addListener(() => {
   createContextMenu();
 });
 
-// Function to create context menu
-function createContextMenu() {
-  chrome.contextMenus.removeAll(() => {
+// Function to create context menu with dynamic custom prompts
+async function createContextMenu() {
+  chrome.contextMenus.removeAll(async () => {
     try {
+      // Always add the default option
       chrome.contextMenus.create({
         id: "generateLinkedInComment",
-        title: "Generate LinkedIn Comment",
+        title: "Generate LinkedIn Comment (Default)",
         contexts: ["selection"],
         documentUrlPatterns: ["*://*.linkedin.com/*"]
       });
+      
+      // Add custom prompts as menu items
+      const enabledPrompts = await getEnabledPrompts();
+      enabledPrompts.forEach((prompt) => {
+        try {
+          chrome.contextMenus.create({
+            id: `custom-prompt-${prompt.id}`,
+            title: prompt.name,
+            contexts: ["selection"],
+            documentUrlPatterns: ["*://*.linkedin.com/*"]
+          });
+        } catch (error) {
+          console.error(`Failed to create menu item for prompt ${prompt.name}:`, error);
+        }
+      });
+      
     } catch (error) {
       console.error('Failed to create context menu:', error);
     }
@@ -40,18 +66,106 @@ function createContextMenu() {
 }
 
 // Handle context menu clicks
-chrome.contextMenus.onClicked.addListener((info, tab) => {
-  if (info.menuItemId === "generateLinkedInComment" && info.selectionText) {
+chrome.contextMenus.onClicked.addListener(async (info, tab) => {
+  if (!info.selectionText) return;
+  
+  if (info.menuItemId === "generateLinkedInComment") {
+    // Default prompt
     handleCommentGeneration(info.selectionText, tab);
+  } else if (info.menuItemId.startsWith("custom-prompt-")) {
+    // Custom prompt
+    const promptId = info.menuItemId.replace("custom-prompt-", "");
+    handleCustomPromptGeneration(info.selectionText, tab, promptId);
   }
 });
+
+// Function to handle custom prompt generation with multiple responses
+async function handleCustomPromptGeneration(selectedText, tab, promptId) {
+  const requestId = Date.now().toString();
+  
+  try {
+    const settings = await getSettings();
+    const { apiKey } = settings;
+    
+    if (!apiKey) {
+      throw { 
+        type: ErrorTypes.API_KEY_MISSING, 
+        message: ErrorMessages[ErrorTypes.API_KEY_MISSING] 
+      };
+    }
+    
+    // Find the custom prompt
+    const customPrompt = settings.customPrompts.find(p => p.id === promptId);
+    if (!customPrompt) {
+      throw new Error('Custom prompt not found');
+    }
+    
+    // Show loading notification
+    try {
+      chrome.tabs.sendMessage(tab.id, {
+        action: 'showLoading',
+        requestId: requestId,
+        message: `Generating ${customPrompt.responseCount} responses...`
+      }, (response) => {
+        if (chrome.runtime.lastError) {
+          showFallbackNotification('Generating Responses', `Please wait while we generate ${customPrompt.responseCount} responses...`);
+        }
+      });
+    } catch (e) {
+      console.error('Exception sending loading notification:', e);
+      showFallbackNotification('Generating Responses', `Please wait while we generate ${customPrompt.responseCount} responses...`);
+    }
+    
+    // Generate multiple comments
+    const responses = await generateMultipleComments(selectedText, apiKey, customPrompt);
+    
+    // Send responses to content script for display
+    chrome.tabs.sendMessage(tab.id, {
+      action: 'showMultipleResponses',
+      responses: responses,
+      requestId: requestId,
+      promptName: customPrompt.name
+    }, (response) => {
+      if (chrome.runtime.lastError) {
+        console.error('Tab communication error:', chrome.runtime.lastError);
+        showFallbackNotification('Error', 'Failed to display responses');
+      }
+    });
+    
+  } catch (error) {
+    console.error('Error generating custom prompt responses:', error);
+    
+    let errorMessage;
+    if (error && error.message) {
+      errorMessage = error.message;
+    } else if (error && error.type && ErrorMessages[error.type]) {
+      errorMessage = ErrorMessages[error.type];
+    } else if (typeof error === 'string') {
+      errorMessage = error;
+    } else {
+      errorMessage = ErrorMessages[ErrorTypes.UNKNOWN];
+    }
+    
+    // Show error notification
+    chrome.tabs.sendMessage(tab.id, {
+      action: 'showError',
+      message: errorMessage,
+      requestId: requestId
+    }, (_) => {
+      if (chrome.runtime.lastError) {
+        showFallbackNotification('Error', errorMessage);
+      }
+    });
+  }
+}
 
 // Function to handle comment generation
 async function handleCommentGeneration(selectedText, tab) {
   const requestId = Date.now().toString();
   
   try {
-    const { apiKey } = await chrome.storage.sync.get('apiKey');
+    const settings = await getSettings();
+    const { apiKey } = settings;
     
     if (!apiKey) {
       throw { 
@@ -172,6 +286,136 @@ async function showFallbackNotification(title, message) {
     });
   } catch (error) {
     console.error('Fallback notification error:', error);
+  }
+}
+
+// Function to generate multiple comments in parallel
+async function generateMultipleComments(selectedText, apiKey, customPrompt) {
+  const numResponses = customPrompt.responseCount;
+  const promises = [];
+  
+  // Create promises for parallel API calls
+  for (let i = 0; i < numResponses; i++) {
+    promises.push(generateCommentWithCustomPrompt(selectedText, apiKey, customPrompt));
+  }
+  
+  try {
+    // Wait for all responses or handle partial failures
+    const results = await Promise.allSettled(promises);
+    const successfulResponses = results
+      .filter(result => result.status === 'fulfilled')
+      .map(result => result.value);
+    
+    if (successfulResponses.length === 0) {
+      throw new Error('Failed to generate any responses');
+    }
+    
+    // If we got some but not all responses, log the failures
+    const failedCount = results.length - successfulResponses.length;
+    if (failedCount > 0) {
+      console.warn(`${failedCount} out of ${numResponses} API calls failed`);
+    }
+    
+    return successfulResponses;
+  } catch (error) {
+    console.error('Error generating multiple comments:', error);
+    throw error;
+  }
+}
+
+// Function to call Gemini API with custom prompt
+async function generateCommentWithCustomPrompt(selectedText, apiKey, customPrompt) {
+  // Detect language of the post
+  const detectedLanguage = detectLanguage(selectedText);
+  const languageName = getLanguageName(detectedLanguage);
+  
+  // Construct prompt with custom text
+  const fullPrompt = `${customPrompt.promptText}
+
+Guidelines:
+- The post appears to be in ${languageName} - respond in the same language
+- Keep responses concise (2-3 sentences maximum)
+- Be specific, add value, and keep it authentic
+
+Post content: "${selectedText}"
+
+Generate only the comment text, without any additional explanation or formatting.`;
+
+  try {
+    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        contents: [{
+          parts: [{
+            text: fullPrompt
+          }]
+        }],
+        generationConfig: {
+          temperature: 0.8,
+          topK: 40,
+          topP: 0.9,
+          maxOutputTokens: 150,
+        },
+        safetySettings: [
+          {
+            category: 'HARM_CATEGORY_HARASSMENT',
+            threshold: 'BLOCK_MEDIUM_AND_ABOVE'
+          },
+          {
+            category: 'HARM_CATEGORY_HATE_SPEECH',
+            threshold: 'BLOCK_MEDIUM_AND_ABOVE'
+          },
+          {
+            category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT',
+            threshold: 'BLOCK_MEDIUM_AND_ABOVE'
+          },
+          {
+            category: 'HARM_CATEGORY_DANGEROUS_CONTENT',
+            threshold: 'BLOCK_MEDIUM_AND_ABOVE'
+          }
+        ]
+      })
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      const error = parseGeminiError({
+        response: {
+          status: response.status,
+          data: errorData,
+          headers: response.headers
+        }
+      });
+      throw error;
+    }
+
+    const data = await response.json();
+    
+    if (data.candidates && data.candidates[0] && data.candidates[0].content && data.candidates[0].content.parts[0]) {
+      const generatedText = data.candidates[0].content.parts[0].text.trim();
+      return generatedText;
+    } else {
+      console.error('Unexpected Gemini response format:', data);
+      throw {
+        type: ErrorTypes.API_ERROR,
+        message: 'Unexpected response format from Gemini API'
+      };
+    }
+    
+  } catch (error) {
+    console.error('Gemini API error:', error);
+    // If it's already a parsed error, throw it
+    if (error.type) {
+      throw error;
+    }
+    // Otherwise, wrap it as a network error
+    throw { 
+      type: ErrorTypes.NETWORK_ERROR, 
+      message: ErrorMessages[ErrorTypes.NETWORK_ERROR] 
+    };
   }
 }
 
@@ -339,10 +583,24 @@ async function checkForUpdates() {
   }
 }
 
+// Function to update context menu when prompts change
+async function updateContextMenu() {
+  await createContextMenu();
+}
+
 // Message handler for communication with popup and content scripts
 chrome.runtime.onMessage.addListener((request, _, sendResponse) => {
   if (request.action === 'testConnection') {
     sendResponse({ success: true });
+  } else if (request.action === 'updateContextMenu') {
+    // Popup requests menu update after prompt changes
+    updateContextMenu().then(() => {
+      sendResponse({ success: true });
+    }).catch((error) => {
+      console.error('Error updating context menu:', error);
+      sendResponse({ success: false, error: error.message });
+    });
+    return true; // Keep message channel open for async response
   }
   return true;
 });
