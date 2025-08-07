@@ -9,6 +9,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     const apiKeyForm = document.getElementById('apiKeyForm');
     const statusDiv = document.getElementById('status');
     
+    // Display update notification if available
+    await displayUpdateNotification();
+    
     // Load existing API key
     const { apiKey } = await chrome.storage.sync.get('apiKey');
     if (apiKey) {
@@ -107,6 +110,26 @@ document.addEventListener('DOMContentLoaded', async () => {
         } catch (error) {
             console.error('API validation error:', error);
             return false;
+        }
+    }
+    
+    // Function to display update notification
+    async function displayUpdateNotification() {
+        const updateBanner = document.getElementById('update-banner');
+        if (!updateBanner) return;
+
+        try {
+            const result = await chrome.storage.local.get('updateInfo');
+            if (result.updateInfo) {
+                updateBanner.innerHTML = `
+                    <strong>📦 Update Available!</strong><br>
+                    Version ${result.updateInfo.version} is now available.
+                    <a href="${result.updateInfo.release_url}" target="_blank" style="color: #0a66c2; text-decoration: underline;">Download Now</a>
+                `;
+                updateBanner.style.display = 'block';
+            }
+        } catch (error) {
+            console.error('Error checking for updates:', error);
         }
     }
     

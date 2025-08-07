@@ -2,146 +2,127 @@
 
 A Chrome extension that generates professional LinkedIn comments using Google's Gemini 1.5 Flash model with automatic clipboard integration.
 
-## Features
+![Extension Demo](https://via.placeholder.com/800x400/0A66C2/FFFFFF?text=Gemini+LinkedIn+Commenter+Demo)
+
+## 🚀 Features
 
 - 🤖 AI-powered comment generation using Gemini 1.5 Flash
 - 📋 Automatic clipboard integration
 - 🌍 Multi-language support (preserves post language)
 - 🎨 Professional LinkedIn-styled interface
-- 🔒 Secure API key storage
+- 🔒 Secure local API key storage
 - ♿ Accessibility-friendly design
+- 🔄 Automatic update notifications
 - 🚀 Fast and responsive with retry logic
 
-## Installation
+## 📦 Distribution
 
-### Developer Mode Installation
+This extension is distributed via **Developer Mode** (not through Chrome Web Store) for maximum control and to avoid potential Terms of Service conflicts.
 
-1. **Download the extension files**
-   - Clone this repository or download as ZIP
-   - Extract files to a folder on your computer
+### For Users: [Installation Guide](DISTRIBUTION.md)
+👆 **Click here for complete installation instructions**
 
-2. **Generate the icon.png file**
-   - Open `icon_generator.html` in your browser
-   - Click "Download icon.png" button
-   - Save the file in the extension folder
+### For Developers: Building & Distribution
 
-3. **Load the extension in Chrome**
-   - Open Chrome and navigate to `chrome://extensions/`
-   - Enable "Developer mode" (toggle in top right)
-   - Click "Load unpacked"
-   - Select the extension folder
+#### Quick Build
+```bash
+./build.sh
+```
 
-4. **Get your Google Gemini API Key**
-   - Visit [Google AI Studio](https://aistudio.google.com/app/apikey)
-   - Create an account or sign in
-   - Generate a new API key
-   - Copy the key (starts with `AIzaSy`)
+This creates:
+- `dist/` folder for testing in Chrome
+- `gemini-linkedin-commenter-v*.zip` for distribution
 
-5. **Configure the extension**
-   - Click the extension icon in Chrome toolbar
-   - Paste your Gemini API key
-   - Click "Save API Key"
+#### Distribution Workflow
+1. **Build the extension** using the build script
+2. **Test locally** by loading the `dist` folder in Chrome
+3. **Create GitHub Release** and upload the ZIP file
+4. **Update version.json** to trigger update notifications
 
-## Usage
+#### Update System
+The extension includes an automatic update checker:
+- Checks for updates daily via GitHub
+- Shows badge notification when updates are available
+- Users get notified through the popup interface
 
-1. Navigate to any LinkedIn post
-2. Select the text you want to comment on
-3. Right-click and choose "Generate LinkedIn Comment"
-4. Wait for the AI to generate a comment
-5. The comment will be automatically copied to your clipboard
-6. Paste (Ctrl+V / Cmd+V) in the comment field
+**Important:** Update the `GITHUB_VERSION_URL` in `background.js` and `version.json` with your actual repository URL.
 
-## Features in Detail
+## 🔧 Configuration
 
-### Smart Comment Generation
-- Generates thoughtful, professional comments
-- Adds value to discussions
-- Maintains appropriate tone
-- Keeps responses concise (2-3 sentences)
+### API Key Setup
+1. Get your [Google Gemini API key](https://aistudio.google.com/app/apikey)
+2. Click the extension icon in Chrome
+3. Enter your API key (starts with `AIzaSy`)
+4. Click "Save API Key"
 
-### Language Detection
-- Automatically detects post language
-- Responds in the same language
-- Supports multiple languages including:
-  - English, Portuguese, Spanish, French
-  - German, Italian, Russian, Japanese
-  - Korean, Chinese, Arabic, Hindi
+### Supported Languages
+- English, Portuguese, Spanish, French
+- German, Italian, Russian, Japanese
+- Korean, Chinese, Arabic, Hindi
 
-### Error Handling
-- Retry logic for network issues
-- Rate limit handling
-- User-friendly error messages
-- Automatic recovery from failures
+## 🛡️ Security & Privacy
 
-### Accessibility
-- Keyboard navigation support
-- Screen reader compatible
-- High contrast mode support
-- Reduced motion support
+- **Local Storage:** API keys stored securely using `chrome.storage.local`
+- **No Data Collection:** Extension doesn't collect or transmit user data
+- **Direct API Calls:** Only communicates with official Google Gemini API
+- **Open Source:** Full source code available for inspection
 
-## Security
+## ⚠️ Important Disclaimers
 
-- API keys are stored locally using Chrome's secure storage
-- No data is sent to external servers except OpenAI
-- All requests use HTTPS
-- API keys are never exposed in the interface
+**LinkedIn Terms of Service:** This tool may conflict with LinkedIn's automation policies. Users assume all responsibility for compliance with LinkedIn's Terms of Service.
 
-## Troubleshooting
+**AI-Generated Content:** Always review and edit AI-generated comments before posting. The tool is designed to assist, not replace, human judgment.
 
-### "API Key Required" error
-- Ensure you've saved your Gemini API key in the extension popup
-- Verify the key starts with "AIzaSy"
-
-### "Rate limit exceeded" error
-- Wait a few moments before trying again
-- Check your Gemini API usage limits
-
-### Comments not copying to clipboard
-- Ensure you're on a LinkedIn page
-- Try refreshing the page
-- Check Chrome permissions for clipboard access
-
-## Development
+## 🔄 Development
 
 ### File Structure
 ```
-gpt-linkedin-commenter/
-├── manifest.json      # Extension configuration
-├── background.js      # Service worker
-├── content.js         # Content script for clipboard
-├── popup.html         # Extension popup UI
-├── popup.js          # Popup functionality
-├── popup.css         # Styling
-├── utils.js          # Utility functions
-├── icon.png          # Extension icon (generate from HTML)
-├── icon.svg          # Icon source
-├── icon_generator.html # Icon generator tool
-└── README.md         # This file
+gemini-linkedin-commenter/
+├── manifest.json          # Extension configuration
+├── background.js          # Service worker with update system
+├── content.js             # Content script for clipboard operations
+├── popup.html/js/css      # Extension popup interface
+├── utils.js              # Utility functions and error handling
+├── icon.png              # Extension icon
+├── version.json          # Version info for updates
+├── build.sh              # Build script
+├── README.md             # This file
+└── DISTRIBUTION.md       # User installation guide
 ```
+
+### Update Process
+1. Update `manifest.json` version
+2. Update `version.json` with new version and release notes
+3. Run `./build.sh` to create distribution package
+4. Create GitHub Release with the ZIP file
+5. Users will be automatically notified of the update
 
 ### Technologies Used
 - Chrome Extensions Manifest V3
 - Google Gemini 1.5 Flash API
 - JavaScript ES6+
 - CSS3 with animations
-- Chrome Storage API
+- Chrome Storage & Alarms APIs
 
-## Privacy Policy
-
-This extension:
-- Only activates on LinkedIn domains
-- Stores API keys locally on your device
-- Does not collect or transmit personal data
-- Only sends selected text to Google Gemini for processing
-
-## License
+## 📄 License
 
 MIT License - feel free to modify and distribute
 
-## Support
+## 🤝 Contributing
 
-For issues or feature requests, please create an issue in the GitHub repository.
+1. Fork the repository
+2. Create a feature branch
+3. Make your changes
+4. Test the extension locally
+5. Create a pull request
+
+## 📞 Support
+
+- [Report Issues](https://github.com/norato/gpt-linkedIn-commenter/issues)
+- [Feature Requests](https://github.com/norato/gpt-linkedIn-commenter/discussions)
 
 ---
 
-Made with ❤️ for the LinkedIn community
+**Made with ❤️ for the LinkedIn community**
+
+*Remember: Use this tool responsibly and always review AI-generated content before posting.*

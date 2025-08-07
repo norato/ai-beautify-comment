@@ -9,7 +9,8 @@
     "storage",
     "clipboardWrite",
     "scripting",
-    "notifications"
+    "notifications",
+    "alarms"
   ],
   
   "web_accessible_resources": [
@@ -20,7 +21,8 @@
   ],
   
   "host_permissions": [
-    "https://*.linkedin.com/*"
+    "https://*.linkedin.com/*",
+    "https://raw.githubusercontent.com/*"
   ],
   
   "background": {

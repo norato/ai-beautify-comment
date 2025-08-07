@@ -277,6 +277,68 @@ Generate only the comment text, without any additional explanation or formatting
   }
 }
 
+// Update checker system
+const GITHUB_VERSION_URL = 'https://raw.githubusercontent.com/norato/gpt-linkedIn-commenter/main/version.json';
+const UPDATE_CHECK_ALARM = 'update-check-alarm';
+
+// Check for updates on startup and schedule periodic checks
+chrome.runtime.onStartup.addListener(checkForUpdates);
+chrome.runtime.onInstalled.addListener(scheduleUpdateCheck);
+
+function scheduleUpdateCheck() {
+  // Check once a day
+  chrome.alarms.create(UPDATE_CHECK_ALARM, {
+    periodInMinutes: 60 * 24 
+  });
+}
+
+chrome.alarms.onAlarm.addListener((alarm) => {
+  if (alarm.name === UPDATE_CHECK_ALARM) {
+    checkForUpdates();
+  }
+});
+
+// Robust version comparison function
+function compareVersions(v1, v2) {
+  const parts1 = v1.split('.').map(Number);
+  const parts2 = v2.split('.').map(Number);
+  const len = Math.max(parts1.length, parts2.length);
+
+  for (let i = 0; i < len; i++) {
+    const p1 = parts1[i] || 0;
+    const p2 = parts2[i] || 0;
+    if (p1 > p2) return 1;
+    if (p1 < p2) return -1;
+  }
+  return 0;
+}
+
+async function checkForUpdates() {
+  try {
+    const response = await fetch(GITHUB_VERSION_URL, { cache: 'no-cache' });
+    if (!response.ok) {
+      console.warn("Update check failed: Network response was not ok.");
+      return;
+    }
+
+    const latestVersionInfo = await response.json();
+    const currentVersion = chrome.runtime.getManifest().version;
+
+    if (compareVersions(latestVersionInfo.version, currentVersion) > 0) {
+      chrome.action.setBadgeText({ text: '!' });
+      chrome.action.setBadgeBackgroundColor({ color: '#f44336' });
+      chrome.action.setTitle({ title: `Update available: v${latestVersionInfo.version}` });
+      chrome.storage.local.set({ updateInfo: latestVersionInfo });
+    } else {
+      // Clear badge if user is up to date
+      chrome.action.setBadgeText({ text: '' });
+      chrome.storage.local.remove('updateInfo');
+    }
+  } catch (error) {
+    console.warn("Update check failed:", error);
+  }
+}
+
 // Message handler for communication with popup and content scripts
 chrome.runtime.onMessage.addListener((request, _, sendResponse) => {
   if (request.action === 'testConnection') {
