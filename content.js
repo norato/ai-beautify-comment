@@ -369,6 +369,385 @@ function initNotificationSystem() {
     return notificationSystem;
 }
 
+// === MODAL SYSTEM FOR MULTIPLE RESPONSES ===
+
+// Function to inject modal CSS once
+function injectModalCss() {
+    const styleId = 'lc-modal-styles';
+    if (document.getElementById(styleId)) {
+        return; // CSS already injected
+    }
+
+    const style = document.createElement('style');
+    style.id = styleId;
+    style.textContent = `
+        /* Modal Overlay */
+        .lc-modal-overlay {
+            position: fixed !important;
+            top: 0 !important;
+            left: 0 !important;
+            width: 100% !important;
+            height: 100% !important;
+            background-color: rgba(0, 0, 0, 0.6) !important;
+            display: flex !important;
+            justify-content: center !important;
+            align-items: center !important;
+            z-index: 99999 !important;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif !important;
+            padding: 20px !important;
+            box-sizing: border-box !important;
+        }
+
+        /* Modal Content */
+        .lc-modal-content {
+            background-color: white !important;
+            padding: 24px !important;
+            border-radius: 12px !important;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3) !important;
+            max-width: 90vw !important;
+            max-height: 90vh !important;
+            overflow-y: auto !important;
+            position: relative !important;
+            box-sizing: border-box !important;
+            min-width: 320px !important;
+            width: fit-content !important;
+            animation: lc-modal-appear 0.3s ease-out !important;
+        }
+
+        @keyframes lc-modal-appear {
+            from {
+                opacity: 0 !important;
+                transform: scale(0.9) translateY(-20px) !important;
+            }
+            to {
+                opacity: 1 !important;
+                transform: scale(1) translateY(0) !important;
+            }
+        }
+
+        /* Close Button */
+        .lc-modal-close-btn {
+            position: absolute !important;
+            top: 12px !important;
+            right: 16px !important;
+            font-size: 28px !important;
+            cursor: pointer !important;
+            color: #666 !important;
+            background: none !important;
+            border: none !important;
+            padding: 4px !important;
+            line-height: 1 !important;
+            border-radius: 50% !important;
+            width: 36px !important;
+            height: 36px !important;
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            transition: all 0.2s ease !important;
+        }
+
+        .lc-modal-close-btn:hover {
+            color: #333 !important;
+            background-color: #f0f0f0 !important;
+        }
+
+        /* Modal Title */
+        .lc-modal-title {
+            margin-top: 0 !important;
+            margin-bottom: 20px !important;
+            color: #0a66c2 !important;
+            font-size: 1.4em !important;
+            font-weight: 600 !important;
+            text-align: center !important;
+            padding-right: 40px !important;
+        }
+
+        .lc-modal-subtitle {
+            color: #666 !important;
+            font-size: 0.9em !important;
+            text-align: center !important;
+            margin-bottom: 24px !important;
+            font-weight: normal !important;
+        }
+
+        /* Response Grid */
+        .lc-response-grid {
+            display: grid !important;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)) !important;
+            gap: 16px !important;
+            margin-top: 16px !important;
+        }
+
+        /* Individual Response Card */
+        .lc-response-card {
+            border: 1px solid #e0e0e0 !important;
+            padding: 18px !important;
+            border-radius: 8px !important;
+            background-color: #fafafa !important;
+            cursor: pointer !important;
+            transition: all 0.2s ease !important;
+            white-space: pre-wrap !important;
+            word-wrap: break-word !important;
+            font-size: 0.95em !important;
+            line-height: 1.5 !important;
+            color: #333 !important;
+            position: relative !important;
+            min-height: 80px !important;
+            display: flex !important;
+            align-items: center !important;
+            text-align: left !important;
+            border-left: 3px solid transparent !important;
+        }
+
+        .lc-response-card:hover {
+            background-color: #f0f7ff !important;
+            border-color: #0a66c2 !important;
+            border-left-color: #0a66c2 !important;
+            box-shadow: 0 2px 8px rgba(10, 102, 194, 0.1) !important;
+            transform: translateY(-1px) !important;
+        }
+
+        .lc-response-card::after {
+            content: "Click to copy" !important;
+            position: absolute !important;
+            bottom: 8px !important;
+            right: 8px !important;
+            font-size: 0.8em !important;
+            color: #999 !important;
+            opacity: 0 !important;
+            transition: opacity 0.2s ease !important;
+            pointer-events: none !important;
+        }
+
+        .lc-response-card:hover::after {
+            opacity: 1 !important;
+        }
+
+        /* Copy Success Message */
+        .lc-copied-message {
+            position: fixed !important;
+            bottom: 30px !important;
+            left: 50% !important;
+            transform: translateX(-50%) !important;
+            background-color: #28a745 !important;
+            color: white !important;
+            padding: 12px 24px !important;
+            border-radius: 25px !important;
+            font-size: 14px !important;
+            font-weight: 500 !important;
+            opacity: 0 !important;
+            transition: opacity 0.3s ease-in-out !important;
+            z-index: 100000 !important;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2) !important;
+        }
+
+        .lc-copied-message.show {
+            opacity: 1 !important;
+        }
+
+        /* Responsive Design */
+        @media screen and (max-width: 768px) {
+            .lc-modal-content {
+                margin: 10px !important;
+                padding: 20px !important;
+                max-width: calc(100vw - 20px) !important;
+            }
+            
+            .lc-response-grid {
+                grid-template-columns: 1fr !important;
+                gap: 12px !important;
+            }
+            
+            .lc-modal-title {
+                font-size: 1.2em !important;
+                padding-right: 40px !important;
+            }
+            
+            .lc-response-card {
+                padding: 16px !important;
+                font-size: 0.9em !important;
+            }
+        }
+
+        /* Dark mode support */
+        @media (prefers-color-scheme: dark) {
+            .lc-modal-content {
+                background-color: #1e1e1e !important;
+                color: #ffffff !important;
+            }
+            
+            .lc-modal-title {
+                color: #70b5f9 !important;
+            }
+            
+            .lc-modal-subtitle {
+                color: #b0b7bf !important;
+            }
+            
+            .lc-response-card {
+                background-color: #2a2a2a !important;
+                color: #ffffff !important;
+                border-color: #444444 !important;
+            }
+            
+            .lc-response-card:hover {
+                background-color: #1a3a5c !important;
+                border-color: #70b5f9 !important;
+                border-left-color: #70b5f9 !important;
+            }
+            
+            .lc-modal-close-btn {
+                color: #b0b7bf !important;
+            }
+            
+            .lc-modal-close-btn:hover {
+                color: #ffffff !important;
+                background-color: #404040 !important;
+            }
+        }
+
+        /* High contrast support */
+        @media (prefers-contrast: high) {
+            .lc-modal-content {
+                border: 2px solid #000000 !important;
+            }
+            
+            .lc-response-card {
+                border: 2px solid #000000 !important;
+            }
+        }
+
+        /* Reduced motion support */
+        @media (prefers-reduced-motion: reduce) {
+            .lc-modal-content {
+                animation: none !important;
+            }
+            
+            .lc-response-card {
+                transition: none !important;
+            }
+            
+            .lc-response-card:hover {
+                transform: none !important;
+            }
+        }
+    `;
+    document.head.appendChild(style);
+}
+
+// Function to show multiple responses modal
+function showMultipleResponsesModal(responses, promptName = 'Custom Prompt') {
+    // Remove any existing modal
+    const existingModal = document.querySelector('.lc-modal-overlay');
+    if (existingModal) {
+        existingModal.remove();
+    }
+
+    injectModalCss();
+
+    const modalOverlay = document.createElement('div');
+    modalOverlay.classList.add('lc-modal-overlay');
+
+    const modalContent = document.createElement('div');
+    modalContent.classList.add('lc-modal-content');
+
+    const title = document.createElement('h3');
+    title.classList.add('lc-modal-title');
+    title.textContent = `${promptName} Responses`;
+
+    const subtitle = document.createElement('p');
+    subtitle.classList.add('lc-modal-subtitle');
+    subtitle.textContent = 'Click on any response to copy it to your clipboard';
+
+    const closeButton = document.createElement('button');
+    closeButton.classList.add('lc-modal-close-btn');
+    closeButton.innerHTML = '&times;';
+    closeButton.title = 'Close modal';
+    closeButton.addEventListener('click', () => {
+        modalOverlay.remove();
+    });
+
+    const responseGrid = document.createElement('div');
+    responseGrid.classList.add('lc-response-grid');
+
+    responses.forEach((response, index) => {
+        const responseCard = document.createElement('div');
+        responseCard.classList.add('lc-response-card');
+        responseCard.textContent = response.trim();
+        responseCard.title = 'Click to copy this response';
+
+        responseCard.addEventListener('click', async () => {
+            try {
+                await navigator.clipboard.writeText(response.trim());
+                showCopiedMessage();
+                modalOverlay.remove();
+            } catch (err) {
+                console.error('Error copying text:', err);
+                // Fallback for older browsers
+                try {
+                    const textArea = document.createElement('textarea');
+                    textArea.value = response.trim();
+                    textArea.style.position = 'fixed';
+                    textArea.style.left = '-999999px';
+                    document.body.appendChild(textArea);
+                    textArea.focus();
+                    textArea.select();
+                    document.execCommand('copy');
+                    textArea.remove();
+                    showCopiedMessage();
+                    modalOverlay.remove();
+                } catch (fallbackErr) {
+                    console.error('Fallback copy failed:', fallbackErr);
+                    alert('Failed to copy to clipboard. Please select and copy manually.');
+                }
+            }
+        });
+
+        responseGrid.appendChild(responseCard);
+    });
+
+    modalContent.appendChild(closeButton);
+    modalContent.appendChild(title);
+    modalContent.appendChild(subtitle);
+    modalContent.appendChild(responseGrid);
+    modalOverlay.appendChild(modalContent);
+    document.body.appendChild(modalOverlay);
+
+    // Close modal when clicking outside
+    modalOverlay.addEventListener('click', (e) => {
+        if (e.target === modalOverlay) {
+            modalOverlay.remove();
+        }
+    });
+}
+
+// Function to show "Copied!" message
+function showCopiedMessage() {
+    let copiedMessage = document.getElementById('lcCopiedMessage');
+    if (!copiedMessage) {
+        copiedMessage = document.createElement('div');
+        copiedMessage.id = 'lcCopiedMessage';
+        copiedMessage.classList.add('lc-copied-message');
+        copiedMessage.textContent = '✓ Copied to clipboard!';
+        document.body.appendChild(copiedMessage);
+    }
+
+    copiedMessage.classList.add('show');
+    setTimeout(() => {
+        copiedMessage.classList.remove('show');
+    }, 2000);
+}
+
+// Add global ESC key listener for modal
+document.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape') {
+        const existingModal = document.querySelector('.lc-modal-overlay');
+        if (existingModal) {
+            existingModal.remove();
+        }
+    }
+});
+
 // Track active requests to handle multiple simultaneous operations
 const activeRequests = new Map();
 
@@ -424,6 +803,26 @@ chrome.runtime.onMessage.addListener((request, _, sendResponse) => {
             activeRequests.delete(requestId);
             notification.hide();
             sendResponse({ success: true });
+        }
+        
+        if (request.action === 'showMultipleResponses') {
+            if (request.responses && request.responses.length > 0) {
+                // Hide any existing loading notification first
+                if (activeRequests.has(requestId)) {
+                    notification.hide();
+                }
+                
+                const promptName = request.promptName || 'Custom Prompt';
+                showMultipleResponsesModal(request.responses, promptName);
+                
+                activeRequests.set(requestId, { status: 'modal_shown', timestamp: Date.now() });
+                sendResponse({ success: true });
+            } else {
+                console.warn('No responses to display in modal.');
+                // Show error notification if no responses
+                notification.show('No Responses', 'No responses were generated. Please try again.', 'error');
+                sendResponse({ success: false, error: 'No responses to display' });
+            }
         }
         
     } catch (error) {
