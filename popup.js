@@ -1,5 +1,8 @@
 // Popup script for GPT LinkedIn Commenter
 
+// Prevent memory leaks by cleaning up listeners
+let cleanupFunctions = [];
+
 document.addEventListener('DOMContentLoaded', async () => {
     const apiKeyInput = document.getElementById('apiKeyInput');
     const toggleVisibility = document.getElementById('toggleVisibility');
@@ -18,6 +21,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         const type = apiKeyInput.type === 'password' ? 'text' : 'password';
         apiKeyInput.type = type;
         toggleVisibility.textContent = type === 'password' ? '👁️' : '👁️‍🗨️';
+        toggleVisibility.setAttribute('aria-label', 
+            type === 'password' ? 'Show API key' : 'Hide API key'
+        );
     });
     
     // Handle form submission
@@ -40,7 +46,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         // Show loading state
         showStatus('Validating API key...', 'loading');
         const submitButton = apiKeyForm.querySelector('.save-btn');
+        const originalText = submitButton.textContent;
         submitButton.disabled = true;
+        submitButton.innerHTML = 'Validating<span class="spinner"></span>';
         
         try {
             // Test the API key with a minimal request
@@ -49,7 +57,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (isValid) {
                 // Save to chrome.storage
                 await chrome.storage.sync.set({ apiKey });
-                showStatus('API key saved successfully!', 'success');
+                showStatus('<span class="checkmark"></span>API key saved successfully!', 'success');
                 
                 // Notify background script
                 chrome.runtime.sendMessage({ action: 'apiKeyUpdated' });
@@ -60,12 +68,13 @@ document.addEventListener('DOMContentLoaded', async () => {
             showStatus('Error validating API key: ' + error.message, 'error');
         } finally {
             submitButton.disabled = false;
+            submitButton.textContent = originalText;
         }
     });
     
     // Function to show status messages
     function showStatus(message, type) {
-        statusDiv.textContent = message;
+        statusDiv.innerHTML = message;
         statusDiv.className = `status ${type}`;
         statusDiv.style.display = 'block';
         
@@ -93,4 +102,15 @@ document.addEventListener('DOMContentLoaded', async () => {
             return false;
         }
     }
+    
+    // Cleanup function for memory leak prevention
+    cleanupFunctions.push(() => {
+        toggleVisibility.removeEventListener('click', toggleVisibility.onclick);
+        apiKeyForm.removeEventListener('submit', apiKeyForm.onsubmit);
+    });
+});
+
+// Clean up on unload
+window.addEventListener('unload', () => {
+    cleanupFunctions.forEach(cleanup => cleanup());
 });

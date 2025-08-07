@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Icon Generator - GPT LinkedIn Commenter</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            background-color: #f3f2ef;
+        }
+        .container {
+            text-align: center;
+            background: white;
+            padding: 40px;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        #canvas {
+            border: 1px solid #ddd;
+            margin: 20px 0;
+        }
+        button {
+            background-color: #0a66c2;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            font-size: 16px;
+            border-radius: 24px;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #084d94;
+        }
+        .info {
+            margin-top: 20px;
+            color: #666;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>GPT LinkedIn Commenter Icon</h1>
+        <canvas id="canvas" width="128" height="128"></canvas>
+        <br>
+        <button onclick="downloadIcon()">Download icon.png (128x128)</button>
+        <div class="info">
+            Open this HTML file in a browser and click the button to download the icon as PNG.
+        </div>
+    </div>
+
+    <script>
+        // Draw the icon on canvas
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        
+        // Background
+        ctx.fillStyle = '#0A66C2';
+        roundRect(ctx, 0, 0, 128, 128, 24);
+        ctx.fill();
+        
+        // LinkedIn "in" text
+        ctx.fillStyle = 'white';
+        ctx.font = 'bold 48px Arial';
+        ctx.textBaseline = 'middle';
+        ctx.fillText('in', 20, 65);
+        
+        // Comment bubble
+        ctx.save();
+        ctx.translate(65, 45);
+        
+        // Bubble path
+        ctx.beginPath();
+        ctx.moveTo(25, 2);
+        ctx.bezierCurveTo(33.8366, 2, 41, 9.16344, 41, 18);
+        ctx.bezierCurveTo(41, 26.8366, 33.8366, 34, 25, 34);
+        ctx.bezierCurveTo(23.8369, 34, 22.7026, 33.8764, 21.6094, 33.6406);
+        ctx.lineTo(14.5, 38.5);
+        ctx.lineTo(14.5, 30.1406);
+        ctx.bezierCurveTo(10.4565, 27.3995, 8, 22.9668, 8, 18);
+        ctx.bezierCurveTo(8, 9.16344, 15.1634, 2, 24, 2);
+        ctx.closePath();
+        
+        ctx.fillStyle = 'white';
+        ctx.fill();
+        
+        // AI sparkles
+        ctx.fillStyle = '#0A66C2';
+        
+        // Large sparkle
+        drawSparkle(ctx, 25, 16, 3);
+        
+        // Medium sparkle
+        drawSparkle(ctx, 20, 19, 2);
+        
+        // Small sparkle
+        drawSparkle(ctx, 29, 19, 1.5);
+        
+        ctx.restore();
+        
+        // Helper function to draw rounded rectangle
+        function roundRect(ctx, x, y, width, height, radius) {
+            ctx.beginPath();
+            ctx.moveTo(x + radius, y);
+            ctx.lineTo(x + width - radius, y);
+            ctx.quadraticCurveTo(x + width, y, x + width, y + radius);
+            ctx.lineTo(x + width, y + height - radius);
+            ctx.quadraticCurveTo(x + width, y + height, x + width - radius, y + height);
+            ctx.lineTo(x + radius, y + height);
+            ctx.quadraticCurveTo(x, y + height, x, y + height - radius);
+            ctx.lineTo(x, y + radius);
+            ctx.quadraticCurveTo(x, y, x + radius, y);
+            ctx.closePath();
+        }
+        
+        // Helper function to draw sparkle
+        function drawSparkle(ctx, x, y, size) {
+            ctx.beginPath();
+            ctx.moveTo(x, y - size * 2);
+            ctx.lineTo(x + size, y - size);
+            ctx.lineTo(x + size * 2, y);
+            ctx.lineTo(x + size, y + size);
+            ctx.lineTo(x, y + size * 2);
+            ctx.lineTo(x - size, y + size);
+            ctx.lineTo(x - size * 2, y);
+            ctx.lineTo(x - size, y - size);
+            ctx.closePath();
+            ctx.fill();
+        }
+        
+        // Download function
+        function downloadIcon() {
+            const link = document.createElement('a');
+            link.download = 'icon.png';
+            link.href = canvas.toDataURL();
+            link.click();
+        }
+    </script>
+</body>
+</html>
