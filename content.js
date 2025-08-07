@@ -218,46 +218,79 @@ function initNotificationSystem() {
     return notificationSystem;
 }
 
+// Track active requests to handle multiple simultaneous operations
+const activeRequests = new Map();
+
 // Listen for messages from the background script
 chrome.runtime.onMessage.addListener((request, _, sendResponse) => {
-    const notification = initNotificationSystem();
-    
-    if (request.action === 'copyToClipboard') {
-        copyToClipboard(request.text)
-            .then(() => {
-                sendResponse({ success: true });
-            })
-            .catch((error) => {
-                console.error('Clipboard error:', error);
-                sendResponse({ success: false, error: error.message });
-            });
+    try {
+        const notification = initNotificationSystem();
+        const requestId = request.requestId || 'default';
         
-        // Return true to indicate async response
-        return true;
-    }
-    
-    // Notification message handlers
-    if (request.action === 'showLoading') {
-        notification.show('Generating Comment', 'AI is creating your professional comment...', 'loading');
-        sendResponse({ success: true });
-    }
-    
-    if (request.action === 'showSuccess') {
-        notification.show('Comment Generated!', 'Your comment has been copied to clipboard', 'success');
-        sendResponse({ success: true });
-    }
-    
-    if (request.action === 'showError') {
-        const message = request.message || 'Failed to generate comment. Please try again.';
-        notification.show('Error', message, 'error');
-        sendResponse({ success: true });
-    }
-    
-    if (request.action === 'hideNotification') {
-        notification.hide();
-        sendResponse({ success: true });
+        if (request.action === 'copyToClipboard') {
+            copyToClipboard(request.text)
+                .then(() => {
+                    sendResponse({ success: true });
+                })
+                .catch((error) => {
+                    console.error('Clipboard error:', error);
+                    sendResponse({ success: false, error: error.message });
+                });
+            
+            // Return true to indicate async response
+            return true;
+        }
+        
+        // Notification message handlers with request tracking
+        if (request.action === 'showLoading') {
+            activeRequests.set(requestId, { status: 'loading', timestamp: Date.now() });
+            notification.show('Generating Comment', 'AI is creating your professional comment...', 'loading');
+            sendResponse({ success: true });
+        }
+        
+        if (request.action === 'showSuccess') {
+            // Only show if this request is still active (prevents race conditions)
+            if (activeRequests.has(requestId)) {
+                activeRequests.set(requestId, { status: 'success', timestamp: Date.now() });
+                notification.show('Comment Generated!', 'Your comment has been copied to clipboard', 'success');
+                
+                // Clean up after auto-dismiss
+                setTimeout(() => activeRequests.delete(requestId), 3500);
+            }
+            sendResponse({ success: true });
+        }
+        
+        if (request.action === 'showError') {
+            const message = request.message || 'Failed to generate comment. Please try again.';
+            if (activeRequests.has(requestId)) {
+                activeRequests.set(requestId, { status: 'error', timestamp: Date.now() });
+                notification.show('Error', message, 'error');
+            }
+            sendResponse({ success: true });
+        }
+        
+        if (request.action === 'hideNotification') {
+            activeRequests.delete(requestId);
+            notification.hide();
+            sendResponse({ success: true });
+        }
+        
+    } catch (error) {
+        console.error('Content script error:', error);
+        sendResponse({ success: false, error: error.message });
     }
 });
+
+// Clean up old requests periodically (prevent memory leaks)
+setInterval(() => {
+    const now = Date.now();
+    for (const [requestId, request] of activeRequests.entries()) {
+        // Remove requests older than 5 minutes
+        if (now - request.timestamp > 5 * 60 * 1000) {
+            activeRequests.delete(requestId);
+        }
+    }
+}, 60 * 1000); // Check every minute
 
 // Function to copy text to clipboard
 async function copyToClipboard(text) {

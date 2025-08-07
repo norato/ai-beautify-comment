@@ -46,6 +46,8 @@ chrome.contextMenus.onClicked.addListener((info, tab) => {
 
 // Function to handle comment generation
 async function handleCommentGeneration(selectedText, tab) {
+  const requestId = Date.now().toString();
+  
   try {
     // Get API key from storage
     const { apiKey } = await chrome.storage.sync.get('apiKey');
@@ -57,10 +59,10 @@ async function handleCommentGeneration(selectedText, tab) {
       };
     }
     
-    // Show loading notification in page
-    chrome.tabs.sendMessage(tab.id, {
+    // Show loading notification in page with fallback
+    await sendNotificationWithFallback(tab.id, {
       action: 'showLoading'
-    });
+    }, 'Generating Comment', 'Please wait while we generate your comment...');
     
     // Generate comment using OpenAI API with retry logic
     const comment = await retryWithBackoff(() => 
@@ -70,13 +72,21 @@ async function handleCommentGeneration(selectedText, tab) {
     // Send comment to content script for clipboard
     chrome.tabs.sendMessage(tab.id, {
       action: 'copyToClipboard',
-      text: comment
-    }, (response) => {
+      text: comment,
+      requestId: requestId
+    }, async (response) => {
+      if (chrome.runtime.lastError) {
+        console.error('Tab communication error:', chrome.runtime.lastError);
+        await showFallbackNotification('Error', 'Failed to copy comment to clipboard');
+        return;
+      }
+      
       if (response && response.success) {
-        // Show success notification
-        chrome.tabs.sendMessage(tab.id, {
-          action: 'showSuccess'
-        });
+        // Show success notification with fallback
+        await sendNotificationWithFallback(tab.id, {
+          action: 'showSuccess',
+          requestId: requestId
+        }, 'Comment Generated!', 'The comment has been copied to your clipboard.');
       } else {
         throw { 
           type: ErrorTypes.CLIPBOARD_ERROR, 
@@ -91,11 +101,49 @@ async function handleCommentGeneration(selectedText, tab) {
     // Handle different error types
     const errorMessage = error.message || ErrorMessages[error.type] || ErrorMessages[ErrorTypes.UNKNOWN];
     
-    // Show error notification in page
-    chrome.tabs.sendMessage(tab.id, {
+    // Show error notification with fallback
+    await sendNotificationWithFallback(tab.id, {
       action: 'showError',
-      message: errorMessage
+      message: errorMessage,
+      requestId: requestId
+    }, 'Error', errorMessage);
+  }
+}
+
+// Helper function to send notification with Chrome notification fallback
+async function sendNotificationWithFallback(tabId, message, fallbackTitle, fallbackMessage) {
+  try {
+    const response = await new Promise((resolve) => {
+      chrome.tabs.sendMessage(tabId, message, (response) => {
+        if (chrome.runtime.lastError) {
+          resolve(null);
+        } else {
+          resolve(response);
+        }
+      });
     });
+    
+    // If content script didn't respond or failed, use Chrome notification
+    if (!response || !response.success) {
+      await showFallbackNotification(fallbackTitle, fallbackMessage);
+    }
+  } catch (error) {
+    console.error('Notification error:', error);
+    await showFallbackNotification(fallbackTitle, fallbackMessage);
+  }
+}
+
+// Helper function to show Chrome notification as fallback
+async function showFallbackNotification(title, message) {
+  try {
+    chrome.notifications.create({
+      type: 'basic',
+      iconUrl: 'icon.png',
+      title: title,
+      message: message
+    });
+  } catch (error) {
+    console.error('Fallback notification error:', error);
   }
 }
 
