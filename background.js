@@ -57,12 +57,9 @@ async function handleCommentGeneration(selectedText, tab) {
       };
     }
     
-    // Show loading notification
-    chrome.notifications.create('loading', {
-      type: 'basic',
-      iconUrl: 'icon.png',
-      title: 'Generating Comment',
-      message: 'Please wait while we generate your comment...'
+    // Show loading notification in page
+    chrome.tabs.sendMessage(tab.id, {
+      action: 'showLoading'
     });
     
     // Generate comment using OpenAI API with retry logic
@@ -75,15 +72,10 @@ async function handleCommentGeneration(selectedText, tab) {
       action: 'copyToClipboard',
       text: comment
     }, (response) => {
-      // Clear loading notification
-      chrome.notifications.clear('loading');
-      
       if (response && response.success) {
-        chrome.notifications.create({
-          type: 'basic',
-          iconUrl: 'icon.png',
-          title: 'Comment Generated!',
-          message: 'The comment has been copied to your clipboard.'
+        // Show success notification
+        chrome.tabs.sendMessage(tab.id, {
+          action: 'showSuccess'
         });
       } else {
         throw { 
@@ -95,15 +87,13 @@ async function handleCommentGeneration(selectedText, tab) {
     
   } catch (error) {
     console.error('Error generating comment:', error);
-    chrome.notifications.clear('loading');
     
     // Handle different error types
     const errorMessage = error.message || ErrorMessages[error.type] || ErrorMessages[ErrorTypes.UNKNOWN];
     
-    chrome.notifications.create({
-      type: 'basic',
-      iconUrl: 'icon.png',
-      title: 'Error',
+    // Show error notification in page
+    chrome.tabs.sendMessage(tab.id, {
+      action: 'showError',
       message: errorMessage
     });
   }
