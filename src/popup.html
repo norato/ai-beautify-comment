@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0"
+    />
+    <title>AI Beautify Comment</title>
+    <link
+      rel="stylesheet"
+      href="popup.css"
+    />
+  </head>
+  <body>
+    <div class="container">
+      <div
+        id="update-banner"
+        style="
+          display: none;
+          padding: 10px;
+          background-color: #fff3e0;
+          border: 1px solid #ffe0b2;
+          border-radius: 4px;
+          margin-bottom: 15px;
+          text-align: center;
+          font-size: 13px;
+        "
+      >
+        <!-- Update notification will be inserted here -->
+      </div>
+
+      <header>
+        <h1>AI Beautify Comment</h1>
+        <p class="subtitle">
+          Enhance and generate professional comments with Gemini AI
+        </p>
+      </header>
+
+      <div class="tab-buttons">
+        <button
+          id="apiKeyTabBtn"
+          class="tab-button active"
+        >
+          API Key
+        </button>
+        <button
+          id="customPromptsTabBtn"
+          class="tab-button"
+        >
+          Custom Prompts
+        </button>
+      </div>
+
+      <main>
+        <!-- API Key Tab -->
+        <div
+          id="apiKeyTabContent"
+          class="tab-content active"
+        >
+          <div class="api-key-section">
+            <h2>Gemini API Key</h2>
+            <p class="description">
+              Enter your Google Gemini API key to enable comment generation
+            </p>
+
+            <form id="apiKeyForm">
+              <div class="form-group">
+                <input
+                  type="password"
+                  id="apiKeyInput"
+                  placeholder="AIzaSy..."
+                  required
+                  autocomplete="off"
+                />
+                <button
+                  type="button"
+                  id="toggleVisibility"
+                  class="toggle-btn"
+                  aria-label="Toggle API key visibility"
+                >
+                  👁️
+                </button>
+              </div>
+
+              <button
+                type="submit"
+                class="save-btn"
+              >
+                Save API Key
+              </button>
+            </form>
+
+            <div
+              id="status"
+              class="status"
+            ></div>
+          </div>
+
+          <div class="instructions">
+            <h3>How to use:</h3>
+            <ol>
+              <li>
+                Get your
+                <a
+                  href="https://aistudio.google.com/app/apikey"
+                  target="_blank"
+                  >Gemini API key</a
+                >
+                and save it above
+              </li>
+              <li>Go to any website (social media, blogs, forums, etc.)</li>
+              <li>Select text you want to comment on or improve</li>
+              <li>Right-click and choose:
+                <ul>
+                  <li><strong>AI Beautify (improve yours)</strong> - Enhance your own writing</li>
+                  <li><strong>AI Comment (default)</strong> - Generate professional comments about content</li>
+                  <li>Or any custom prompt you've created</li>
+                </ul>
+              </li>
+              <li>Choose from the generated responses</li>
+            </ol>
+          </div>
+
+          <div class="footer">
+            <p>
+              Need an API key?
+              <a
+                href="https://aistudio.google.com/app/apikey"
+                target="_blank"
+                >Get one here</a
+              >
+            </p>
+          </div>
+        </div>
+
+        <!-- Custom Prompts Tab -->
+        <div
+          id="customPromptsTabContent"
+          class="tab-content"
+        >
+          <h2>Custom Prompts</h2>
+          <p class="description">
+            Create up to 5 custom prompts for different types of
+            comments
+          </p>
+
+          <div id="promptsList">
+            <div class="no-prompts-message">
+              No custom prompts yet. Add one below!
+            </div>
+          </div>
+
+          <div
+            id="promptFormContainer"
+            class="prompt-form-container"
+            style="display: none"
+          >
+            <h3><span id="formTitle">Add New Prompt</span></h3>
+            <input
+              type="hidden"
+              id="promptId"
+            />
+
+            <div class="form-group">
+              <label for="promptName"
+                >Prompt Name (appears in context menu):</label
+              >
+              <input
+                type="text"
+                id="promptName"
+                maxlength="50"
+                placeholder="e.g., Professional Insight"
+                required
+              />
+            </div>
+
+            <div class="form-group">
+              <label for="promptText">Prompt Instructions:</label>
+              <textarea
+                id="promptText"
+                rows="4"
+                placeholder="Provide instructions for the AI. The selected text will be automatically included."
+                required
+              ></textarea>
+              <small class="help-text"
+                >Example: "Generate a thoughtful professional insight that adds
+                value to the discussion"</small
+              >
+            </div>
+
+            <div class="form-group inline">
+              <div>
+                <label for="responseCount">Number of Responses (1-5):</label>
+                <input
+                  type="number"
+                  id="responseCount"
+                  min="1"
+                  max="5"
+                  value="3"
+                  required
+                />
+                <small class="help-text"
+                  >1 response = auto-copy to clipboard, 2+ responses = modal to
+                  choose from options</small
+                >
+              </div>
+              
+              <div>
+                <label class="checkbox-label">
+                  <input
+                    type="checkbox"
+                    id="promptEnabled"
+                    checked
+                  />
+                  <span>Enabled (show in context menu)</span>
+                </label>
+                <small class="help-text"
+                  >Disabled prompts won't appear in the right-click context menu</small
+                >
+              </div>
+            </div>
+
+            <div class="form-actions">
+              <button
+                id="savePromptBtn"
+                class="save-btn"
+              >
+                Save Prompt
+              </button>
+              <button
+                id="cancelPromptBtn"
+                class="cancel-btn"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+
+          <div class="prompt-actions">
+            <button
+              id="addPromptBtn"
+              class="add-btn"
+            >
+              Add New Prompt
+            </button>
+            <div
+              class="prompt-limit-message"
+              style="display: none"
+            >
+              You've reached the limit of 5 custom prompts.
+            </div>
+          </div>
+
+          <div class="global-settings">
+            <h3>Global Settings</h3>
+            <div class="form-group">
+              <div>
+                <label for="defaultResponseCount"
+                  >AI Comment - Number of Responses:</label
+                >
+                <input
+                  type="number"
+                  id="defaultResponseCount"
+                  min="1"
+                  max="5"
+                  value="3"
+                />
+                <button
+                  id="saveDefaultBtn"
+                  class="save-btn small"
+                >
+                  Save
+                </button>
+              </div>
+              <div>
+                <small class="help-text"
+                  >This setting applies to the default "AI Comment" option. Custom prompts have their own response count settings.</small
+                >
+              </div>
+            </div>
+            
+            <div class="form-group">
+              <div>
+                <label for="defaultBeautifyResponseCount"
+                  >AI Beautify - Number of Responses:</label
+                >
+                <input
+                  type="number"
+                  id="defaultBeautifyResponseCount"
+                  min="1"
+                  max="5"
+                  value="3"
+                />
+                <button
+                  id="saveBeautifyBtn"
+                  class="save-btn small"
+                >
+                  Save
+                </button>
+              </div>
+              <div>
+                <small class="help-text"
+                  >This setting applies to the "AI Beautify" option that improves your selected text.<br />
+                  <strong>Note:</strong> When set to 1 response, the text will be automatically replaced in place (or copied to clipboard if not possible). When set to 2+ responses, you'll see a modal to choose from multiple options.</small
+                >
+              </div>
+            </div>
+          </div>
+        </div>
+      </main>
+    </div>
+
+    <script src="popup.js"></script>
+  </body>
+</html>

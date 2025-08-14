@@ -1,0 +1,51 @@
+{
+  "manifest_version": 3,
+  "name": "AI Beautify Comment",
+  "version": "3.0.0",
+  "description": "Enhance and generate professional comments on any website using Google's Gemini 1.5 Flash model",
+  
+  "permissions": [
+    "contextMenus",
+    "storage",
+    "clipboardWrite",
+    "scripting",
+    "notifications",
+    "alarms",
+    "activeTab"
+  ],
+  
+  "web_accessible_resources": [
+    {
+      "resources": ["icon.png"],
+      "matches": ["*://*/*"]
+    }
+  ],
+  
+  "host_permissions": [
+    "https://raw.githubusercontent.com/*",
+    "https://generativelanguage.googleapis.com/*"
+  ],
+  
+  "background": {
+    "service_worker": "background.js"
+  },
+  
+  "content_scripts": [
+    {
+      "matches": ["*://*/*"],
+      "js": ["content.js"],
+      "run_at": "document_idle"
+    }
+  ],
+  
+  "action": {
+    "default_popup": "popup.html",
+    "default_icon": {
+      "128": "icon.png"
+    }
+  },
+  
+  "icons": {
+    "128": "icon.png"
+  }
+}
