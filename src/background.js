@@ -1,15 +1,19 @@
 // Service Worker for AI Beautify Comment
 
-// Load utilities and API service
+// Load utilities, API service and context menu service
 try {
   importScripts('utils.js');
   importScripts('gemini-api.js');
+  importScripts('contextmenu-service.js');
 } catch (error) {
   console.error('Failed to load scripts:', error);
 }
 
 // TypeScript declarations for imported functions (loaded via importScripts)
-/* global getEnabledPrompts, getSettings, addPrompt, updatePrompt, deletePrompt, updateSettings, migrateStorage, ErrorTypes, ErrorMessages, parseGeminiError, GeminiApiClient */
+/* global getEnabledPrompts, getSettings, addPrompt, updatePrompt, deletePrompt, updateSettings, migrateStorage, ErrorTypes, ErrorMessages, parseGeminiError, GeminiApiClient, ContextMenuService */
+
+// Initialize Context Menu Service
+const contextMenuService = new ContextMenuService(getEnabledPrompts);
 
 // Extension lifecycle handlers
 chrome.runtime.onInstalled.addListener(async (details) => {
@@ -24,8 +28,8 @@ chrome.runtime.onInstalled.addListener(async (details) => {
     await migrateStorage();
   }
   
-  console.log('🤖 AI Beautify Comment - Creating context menu');
-  await createContextMenu();
+  console.log('🤖 AI Beautify Comment - Creating context menu with service');
+  await contextMenuService.initAndCreateMenus();
   
   chrome.action.setIcon({
     path: {
@@ -36,80 +40,11 @@ chrome.runtime.onInstalled.addListener(async (details) => {
 
 // Create context menu on startup
 chrome.runtime.onStartup.addListener(async () => {
-  console.log('🤖 AI Beautify Comment - Extension startup, recreating context menu');
-  await createContextMenu();
+  console.log('🤖 AI Beautify Comment - Extension startup, recreating context menu with service');
+  await contextMenuService.initAndCreateMenus();
 });
 
-// Function to create context menu with dynamic custom prompts
-async function createContextMenu() {
-  console.log('🤖 AI Beautify Comment - Starting context menu creation');
-  return new Promise((resolve) => {
-    chrome.contextMenus.removeAll(async () => {
-      console.log('🤖 AI Beautify Comment - Removed existing context menus');
-      try {
-        // 1. AI Beautify (improve your own text) - positioned first
-        chrome.contextMenus.create({
-          id: 'beautifyText',
-          title: 'AI Beautify (improve yours)',
-          contexts: ['selection'],
-          documentUrlPatterns: ['*://*/*']
-        }, () => {
-          if (chrome.runtime.lastError) {
-            console.error('Error creating AI Beautify menu:', chrome.runtime.lastError);
-          }
-        });
-        
-        // 2. Visual separator
-        chrome.contextMenus.create({
-          id: 'separator1',
-          type: 'separator',
-          contexts: ['selection'],
-          documentUrlPatterns: ['*://*/*']
-        }, () => {
-          if (chrome.runtime.lastError) {
-            console.error('Error creating separator:', chrome.runtime.lastError);
-          }
-        });
-
-        // 3. AI Comment (generate comments from content)
-        chrome.contextMenus.create({
-          id: 'generateProfessionalComment',
-          title: 'AI Comment (default)',
-          contexts: ['selection'],
-          documentUrlPatterns: ['*://*/*']
-        }, () => {
-          if (chrome.runtime.lastError) {
-            console.error('Error creating AI Comment menu:', chrome.runtime.lastError);
-          }
-        });
-        
-        // 4. Add custom prompts as additional comment options
-        try {
-          const enabledPrompts = await getEnabledPrompts();
-          enabledPrompts.forEach((prompt) => {
-            chrome.contextMenus.create({
-              id: `custom-prompt-${prompt.id}`,
-              title: prompt.name,
-              contexts: ['selection'],
-              documentUrlPatterns: ['*://*/*']
-            }, () => {
-              if (chrome.runtime.lastError) {
-                console.error(`Error creating custom prompt menu ${prompt.name}:`, chrome.runtime.lastError);
-              }
-            });
-          });
-        } catch (error) {
-          console.error('Error getting enabled prompts:', error);
-        }
-        
-        resolve();
-      } catch (error) {
-        console.error('Failed to create context menu:', error);
-        resolve();
-      }
-    });
-  });
-}
+// Legacy createContextMenu function removed - now using ContextMenuService
 
 // Handle context menu clicks
 chrome.contextMenus.onClicked.addListener(async (info, tab) => {
@@ -158,9 +93,13 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
     console.log('🤖 AI Beautify Comment - Handling text beautification');
     handleTextBeautification(info.selectionText, tab, requestId);
   } else if (info.menuItemId.startsWith('custom-prompt-')) {
-    const promptId = info.menuItemId.replace('custom-prompt-', '');
-    console.log('🤖 AI Beautify Comment - Handling custom prompt:', promptId);
-    handleCustomPromptGeneration(info.selectionText, tab, promptId, requestId);
+    const promptData = contextMenuService.getPromptData(info.menuItemId);
+    if (promptData) {
+      console.log('🤖 AI Beautify Comment - Handling custom prompt:', promptData.name);
+      handleCustomPromptGeneration(info.selectionText, tab, promptData.id, requestId);
+    } else {
+      console.error('🤖 AI Beautify Comment - No prompt data found for menu item:', info.menuItemId);
+    }
   }
 });
 
@@ -717,6 +656,16 @@ Example format for ${numResponses} responses:
   ]
 }`;
 
+  // 🐛 DEBUG: Log the complete prompt being sent to Gemini
+  console.log('🤖 AI Beautify Comment - COMPLETE PROMPT BEING SENT TO GEMINI:');
+  console.log('='.repeat(60));
+  console.log(jsonPrompt);
+  console.log('='.repeat(60));
+  console.log('🤖 AI Beautify Comment - Selected text:', selectedText);
+  console.log('🤖 AI Beautify Comment - Custom prompt name:', customPrompt.name);
+  console.log('🤖 AI Beautify Comment - Custom prompt text:', customPrompt.promptText);
+  console.log('='.repeat(60));
+
   try {
     // Use the new API client
     const contents = [{ parts: [{ text: jsonPrompt }] }];
@@ -730,12 +679,26 @@ Example format for ${numResponses} responses:
 
     const response = await geminiClient.generateContent(contents, generationConfig, safetySettings);
     
+    // 🐛 DEBUG: Log the raw response from Gemini
+    console.log('🤖 AI Beautify Comment - RAW RESPONSE FROM GEMINI:');
+    console.log('='.repeat(60));
+    console.log(JSON.stringify(response, null, 2));
+    console.log('='.repeat(60));
+    
     // Parse JSON response using the new client method
     const jsonResponse = geminiClient.parseJsonResponse(response);
     
+    // 🐛 DEBUG: Log the parsed JSON response
+    console.log('🤖 AI Beautify Comment - PARSED JSON RESPONSE:');
+    console.log('='.repeat(60));
+    console.log(JSON.stringify(jsonResponse, null, 2));
+    console.log('='.repeat(60));
+    
     if (jsonResponse && Array.isArray(jsonResponse.sugestoes) && jsonResponse.sugestoes.length > 0) {
+      console.log('🤖 AI Beautify Comment - SUCCESS: Generated', jsonResponse.sugestoes.length, 'responses');
       return jsonResponse.sugestoes.slice(0, numResponses); // Ensure we don't exceed requested count
     } else {
+      console.error('🤖 AI Beautify Comment - ERROR: Invalid JSON format or missing sugestoes array');
       throw new Error('Invalid JSON format: missing or empty sugestoes array');
     }
     
@@ -918,7 +881,8 @@ async function checkForUpdates() {
 
 // Function to update context menu when prompts change
 async function updateContextMenu() {
-  await createContextMenu();
+  console.log('[🤖] AI Beautify Comment - Updating context menu with service');
+  await contextMenuService.refreshMenus();
 }
 
 // Message handler for communication with popup and content scripts
