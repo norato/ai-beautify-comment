@@ -1,5 +1,5 @@
 {
   "version": "2.2.0",
-  "release_url": "https://github.com/norato/gpt-linkedIn-commenter/releases/latest",
+  "release_url": "https://github.com/norato/ai-beautify-comment/releases/latest",
   "release_notes": "Enhanced UX with improved error handling, better form layout, and fixed button positioning. Added API timeout handling and reorganized interface for better usability."
 }

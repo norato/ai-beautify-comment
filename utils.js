@@ -13,11 +13,11 @@ const ErrorTypes = {
 
 // Error messages
 const ErrorMessages = {
-    [ErrorTypes.API_KEY_MISSING]: 'Please set your OpenAI API key in the extension popup.',
+    [ErrorTypes.API_KEY_MISSING]: 'Please set your Gemini API key in the extension popup.',
     [ErrorTypes.API_KEY_INVALID]: 'Invalid API key. Please check your API key and try again.',
     [ErrorTypes.NETWORK_ERROR]: 'Network error. Please check your internet connection.',
     [ErrorTypes.RATE_LIMIT]: 'Rate limit exceeded. Please wait a moment and try again.',
-    [ErrorTypes.API_ERROR]: 'OpenAI API error. Please try again later.',
+    [ErrorTypes.API_ERROR]: 'Gemini API error. Please try again later.',
     [ErrorTypes.CLIPBOARD_ERROR]: 'Failed to copy to clipboard. Please try again.',
     [ErrorTypes.UNKNOWN]: 'An unexpected error occurred. Please try again.'
 };

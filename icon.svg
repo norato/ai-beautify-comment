@@ -2,8 +2,8 @@
   <!-- Background -->
   <rect width="128" height="128" rx="24" fill="#0A66C2"/>
   
-  <!-- LinkedIn "in" logo -->
-  <text x="20" y="80" font-family="Arial, sans-serif" font-size="48" font-weight="bold" fill="white">in</text>
+  <!-- AI logo -->
+  <text x="16" y="80" font-family="Arial, sans-serif" font-size="48" font-weight="bold" fill="white">AI</text>
   
   <!-- Comment bubble -->
   <g transform="translate(65, 45)">

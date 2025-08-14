@@ -1,6 +1,6 @@
-# Gemini LinkedIn Commenter
+# AI Beautify Comment
 
-A Chrome extension that generates professional LinkedIn comments using Google's Gemini 1.5 Flash model with custom prompts, multiple response options, and automatic clipboard integration.
+A Chrome extension that enhances and generates professional comments on any website using Google's Gemini 1.5 Flash model with custom prompts, multiple response options, and automatic clipboard integration.
 
 ## 📸 Screenshots
 
@@ -19,7 +19,7 @@ A Chrome extension that generates professional LinkedIn comments using Google's 
 - 🤖 **AI-powered comment generation** using Gemini 1.5 Flash
 - 📋 **Automatic clipboard integration** with one-click copy
 - 🌍 **Multi-language support** (preserves post language)
-- 🎨 **Professional LinkedIn-styled interface**
+- 🎨 **Professional interface for comment enhancement**
 
 ### New Advanced Features
 - ✨ **Custom Prompts System** - Create up to 5 personalized prompts for different comment styles
@@ -67,7 +67,7 @@ This extension is distributed via **Developer Mode** (not through Chrome Web Sto
 
 This creates:
 - `dist/` folder for testing in Chrome
-- `gemini-linkedin-commenter-v*.zip` for distribution
+- `ai-beautify-comment-v*.zip` for distribution
 
 #### Distribution Workflow
 1. **Build the extension** using the build script
@@ -102,10 +102,10 @@ The extension includes an automatic update checker:
 4. Use **Global Settings** to set default response count for the built-in prompt
 
 ### How to Use
-1. **Go to any LinkedIn post**
-2. **Select the post text** you want to comment on
+1. **Go to any website** (social media, blogs, forums, etc.)
+2. **Select the text** you want to comment on or respond to
 3. **Right-click** and choose from available prompts:
-   - **"Generate LinkedIn Comment"** (default prompt)
+   - **"Generate Professional Comment"** (default prompt)
    - Your custom prompts (if created)
 4. **Results depend on response count**:
    - **1 response**: Automatically copied to clipboard
@@ -125,7 +125,7 @@ The extension includes an automatic update checker:
 
 ## ⚠️ Important Disclaimers
 
-**LinkedIn Terms of Service:** This tool may conflict with LinkedIn's automation policies. Users assume all responsibility for compliance with LinkedIn's Terms of Service.
+**Website Terms of Service:** This tool should be used in compliance with the terms of service of websites where you use it. Users assume all responsibility for compliance with applicable terms of service.
 
 **AI-Generated Content:** Always review and edit AI-generated comments before posting. The tool is designed to assist, not replace, human judgment.
 
@@ -133,7 +133,7 @@ The extension includes an automatic update checker:
 
 ### File Structure
 ```
-gemini-linkedin-commenter/
+ai-beautify-comment/
 ├── manifest.json          # Extension configuration
 ├── background.js          # Service worker with update system
 ├── content.js             # Content script for clipboard operations
@@ -174,11 +174,11 @@ MIT License - feel free to modify and distribute
 
 ## 📞 Support
 
-- [Report Issues](https://github.com/norato/gpt-linkedIn-commenter/issues)
-- [Feature Requests](https://github.com/norato/gpt-linkedIn-commenter/discussions)
+- [Report Issues](https://github.com/norato/ai-beautify-comment/issues)
+- [Feature Requests](https://github.com/norato/ai-beautify-comment/discussions)
 
 ---
 
-**Made with ❤️ for the LinkedIn community**
+**Made with ❤️ for better online communication everywhere**
 
 *Remember: Use this tool responsibly and always review AI-generated content before posting.*

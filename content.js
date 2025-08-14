@@ -1,10 +1,10 @@
-// Content script for GPT LinkedIn Commenter
+// Content script for AI Beautify Comment
 // Handles clipboard operations and DOM interactions
 
 // Get icon URL from extension
 
 // Notification component
-class LinkedInNotification {
+class UniversalNotification {
     constructor() {
         this.notification = null;
         this.hideTimer = null;
@@ -19,14 +19,14 @@ class LinkedInNotification {
 
     createNotification() {
         this.notification = document.createElement('div');
-        this.notification.id = 'gpt-linkedin-notification';
+        this.notification.id = 'ai-beautify-notification';
         this.notification.setAttribute('role', 'alert');
         this.notification.setAttribute('aria-live', 'polite');
         this.notification.setAttribute('aria-atomic', 'true');
         this.notification.setAttribute('tabindex', '-1');
         this.notification.innerHTML = `
             <div class="gpt-notification-header">
-                <img src="${chrome.runtime.getURL('icon.png')}" alt="GPT LinkedIn Commenter" class="gpt-notification-icon">
+                <img src="${chrome.runtime.getURL('icon.png')}" alt="AI Beautify Comment" class="ai-notification-icon">
                 <button class="gpt-notification-close" aria-label="Close notification" style="display: none;" tabindex="0">&times;</button>
             </div>
             <div class="gpt-notification-content">
@@ -52,7 +52,7 @@ class LinkedInNotification {
         const style = document.createElement('style');
         style.id = 'gpt-notification-styles';
         style.textContent = `
-            #gpt-linkedin-notification {
+            #ai-beautify-notification {
                 position: fixed !important;
                 top: 80px !important;
                 right: 20px !important;
@@ -70,7 +70,7 @@ class LinkedInNotification {
                 display: none !important;
             }
             
-            #gpt-linkedin-notification.gpt-show {
+            #ai-beautify-notification.gpt-show {
                 display: block !important;
                 transform: translateX(0) !important;
                 opacity: 1 !important;
@@ -169,9 +169,9 @@ class LinkedInNotification {
                 50% { transform: scale(1.05) !important; }
             }
             
-            /* Dynamic positioning based on LinkedIn layout */
+            /* Dynamic positioning for universal layout */
             @media screen and (max-width: 768px) {
-                #gpt-linkedin-notification {
+                #ai-beautify-notification {
                     top: 60px !important;
                     right: 10px !important;
                     left: 10px !important;
@@ -181,13 +181,13 @@ class LinkedInNotification {
             }
             
             @media screen and (max-height: 600px) {
-                #gpt-linkedin-notification {
+                #ai-beautify-notification {
                     top: 10px !important;
                 }
             }
             
             /* Accessibility improvements */
-            #gpt-linkedin-notification[aria-live] {
+            #ai-beautify-notification[aria-live] {
                 position: fixed !important;
             }
             
@@ -198,7 +198,7 @@ class LinkedInNotification {
             
             /* High contrast support */
             @media (prefers-contrast: high) {
-                #gpt-linkedin-notification {
+                #ai-beautify-notification {
                     border: 2px solid #000 !important;
                     background: #fff !important;
                 }
@@ -214,20 +214,20 @@ class LinkedInNotification {
             
             /* Reduced motion support */
             @media (prefers-reduced-motion: reduce) {
-                #gpt-linkedin-notification,
+                #ai-beautify-notification,
                 .gpt-spinner {
                     animation: none !important;
                     transition: opacity 0.1s !important;
                 }
                 
-                #gpt-linkedin-notification.gpt-show {
+                #ai-beautify-notification.ai-show {
                     transform: none !important;
                 }
             }
             
             /* Dark mode support */
             @media (prefers-color-scheme: dark) {
-                #gpt-linkedin-notification {
+                #ai-beautify-notification {
                     background: #1d2226 !important;
                     border-color: #38434f !important;
                     color: #f1f2f2 !important;
@@ -283,18 +283,18 @@ class LinkedInNotification {
         // Update ARIA attributes
         this.notification.setAttribute('aria-live', type === 'error' ? 'assertive' : 'polite');
         
-        // Show notification with enhanced animation
+        // Show notification with enhanced animation (faster for immediate feedback)
         this.notification.style.display = 'block';
-        this.notification.style.animation = 'gpt-slideInFromRight 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards';
+        this.notification.style.animation = 'gpt-slideInFromRight 0.2s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards';
         
         setTimeout(() => {
-            this.notification.classList.add('gpt-show');
+            this.notification.classList.add('ai-show');
             
             // Add pulse animation for loading state
             if (type === 'loading') {
-                this.notification.style.animation += ', gpt-pulse 2s ease-in-out infinite';
+                this.notification.style.animation += ', gpt-pulse 1.5s ease-in-out infinite';
             }
-        }, 10);
+        }, 5);
         
         // Auto-hide for success messages
         if (type === 'success') {
@@ -307,7 +307,7 @@ class LinkedInNotification {
         
         // Enhanced slide-out animation
         this.notification.style.animation = 'gpt-slideOutToRight 0.3s cubic-bezier(0.55, 0.055, 0.675, 0.19) forwards';
-        this.notification.classList.remove('gpt-show');
+        this.notification.classList.remove('ai-show');
         
         setTimeout(() => {
             this.notification.style.display = 'none';
@@ -364,7 +364,7 @@ let notificationSystem = null;
 
 function initNotificationSystem() {
     if (!notificationSystem) {
-        notificationSystem = new LinkedInNotification();
+        notificationSystem = new UniversalNotification();
     }
     return notificationSystem;
 }
@@ -653,7 +653,7 @@ function showMultipleResponsesModal(responses, promptName = 'Custom Prompt') {
         width: 100% !important;
         height: 100% !important;
         z-index: 99999 !important;
-        pointer-events: none !important;
+        pointer-events: auto !important;
     `;
     
     // Create Shadow Root for complete CSS isolation
@@ -716,6 +716,8 @@ function showMultipleResponsesModal(responses, promptName = 'Custom Prompt') {
                     document.body.appendChild(textArea);
                     textArea.focus();
                     textArea.select();
+                    // Using execCommand as fallback - deprecated but still widely supported
+                    // TODO: Modern browsers should use navigator.clipboard.writeText() instead
                     document.execCommand('copy');
                     textArea.remove();
                     showCopiedMessage();
@@ -1185,6 +1187,8 @@ async function copyToClipboard(text) {
         textArea.select();
         
         try {
+            // Using execCommand as fallback - deprecated but still widely supported
+            // TODO: Modern browsers should use navigator.clipboard.writeText() instead
             const successful = document.execCommand('copy');
             if (!successful) {
                 throw new Error('Copy command failed');
@@ -1272,7 +1276,7 @@ setTimeout(() => {
 
 // Test runtime connection
 try {
-    chrome.runtime.sendMessage({action: 'testConnection'}, (response) => {
+    chrome.runtime.sendMessage({action: 'testConnection'}, () => {
         if (chrome.runtime.lastError) {
             console.error('Runtime connection failed:', chrome.runtime.lastError.message);
         }

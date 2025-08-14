@@ -1,4 +1,4 @@
-// Popup script for GPT LinkedIn Commenter
+// Popup script for AI Beautify Comment
 
 // Prevent memory leaks by cleaning up listeners
 let cleanupFunctions = [];

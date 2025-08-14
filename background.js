@@ -1,4 +1,4 @@
-// Service Worker for GPT LinkedIn Commenter
+// Service Worker for AI Beautify Comment
 
 // Load utilities
 try {
@@ -6,6 +6,9 @@ try {
 } catch (error) {
   console.error('Failed to load utils.js:', error);
 }
+
+// TypeScript declarations for utils functions (imported via importScripts)
+/* global getEnabledPrompts, getSettings, addPrompt, updatePrompt, deletePrompt, updateSettings, migrateStorage, ErrorTypes, ErrorMessages, parseGeminiError, detectLanguage, getLanguageName */
 
 // Extension lifecycle handlers
 chrome.runtime.onInstalled.addListener(async (details) => {
@@ -38,10 +41,10 @@ async function createContextMenu() {
     try {
       // Always add the default option
       chrome.contextMenus.create({
-        id: "generateLinkedInComment",
-        title: "Generate LinkedIn Comment (Default)",
+        id: "generateProfessionalComment",
+        title: "Generate Professional Comment (Default)",
         contexts: ["selection"],
-        documentUrlPatterns: ["*://*.linkedin.com/*"]
+        documentUrlPatterns: ["*://*/*"]
       });
       
       // Add custom prompts as menu items
@@ -52,7 +55,7 @@ async function createContextMenu() {
             id: `custom-prompt-${prompt.id}`,
             title: prompt.name,
             contexts: ["selection"],
-            documentUrlPatterns: ["*://*.linkedin.com/*"]
+            documentUrlPatterns: ["*://*/*"]
           });
         } catch (error) {
           console.error(`Failed to create menu item for prompt ${prompt.name}:`, error);
@@ -69,19 +72,47 @@ async function createContextMenu() {
 chrome.contextMenus.onClicked.addListener(async (info, tab) => {
   if (!info.selectionText) return;
   
-  if (info.menuItemId === "generateLinkedInComment") {
+  // Show immediate visual loading indicator
+  const requestId = Date.now().toString();
+  try {
+    await chrome.scripting.executeScript({
+      target: { tabId: tab.id },
+      function: showLoadingIndicator,
+      args: [chrome.runtime.getURL('icon.png')]
+    });
+  } catch (e) {
+    console.warn('Could not show visual loading indicator:', e);
+    // Fallback to notification if scripting fails
+    try {
+      chrome.tabs.sendMessage(tab.id, {
+        action: 'showLoading',
+        requestId: requestId,
+        message: 'AI is working...'
+      }, () => {
+        if (chrome.runtime.lastError) {
+          console.warn('Could not show loading notification fallback:', chrome.runtime.lastError);
+        }
+      });
+    } catch (fallbackError) {
+      console.warn('Could not show loading fallback:', fallbackError);
+    }
+  }
+  
+  if (info.menuItemId === "generateProfessionalComment") {
     // Default prompt
-    handleCommentGeneration(info.selectionText, tab);
+    handleCommentGeneration(info.selectionText, tab, requestId);
   } else if (info.menuItemId.startsWith("custom-prompt-")) {
     // Custom prompt
     const promptId = info.menuItemId.replace("custom-prompt-", "");
-    handleCustomPromptGeneration(info.selectionText, tab, promptId);
+    handleCustomPromptGeneration(info.selectionText, tab, promptId, requestId);
   }
 });
 
 // Function to handle custom prompt generation with multiple responses
-async function handleCustomPromptGeneration(selectedText, tab, promptId) {
-  const requestId = Date.now().toString();
+async function handleCustomPromptGeneration(selectedText, tab, promptId, requestId = null) {
+  if (!requestId) {
+    requestId = Date.now().toString();
+  }
   
   try {
     const settings = await getSettings();
@@ -100,21 +131,15 @@ async function handleCustomPromptGeneration(selectedText, tab, promptId) {
       throw new Error('Custom prompt not found');
     }
     
-    // Show loading notification
+    // Update loading notification with specific response count
     try {
       chrome.tabs.sendMessage(tab.id, {
         action: 'showLoading',
         requestId: requestId,
-        message: `Generating ${customPrompt.responseCount} responses...`
-      }, (response) => {
-        if (chrome.runtime.lastError) {
-          console.warn(`Could not send loading notification to tab ${tab.id}: ${chrome.runtime.lastError.message}`);
-          showFallbackNotification('Generating Responses', `Please wait while we generate ${customPrompt.responseCount} responses...`);
-        }
+        message: `Generating ${customPrompt.responseCount} response${customPrompt.responseCount > 1 ? 's' : ''}...`
       });
     } catch (e) {
-      console.error('Exception sending loading notification:', e);
-      showFallbackNotification('Generating Responses', `Please wait while we generate ${customPrompt.responseCount} responses...`);
+      console.warn('Could not update loading notification:', e);
     }
     
     // Generate multiple comments
@@ -135,7 +160,16 @@ async function handleCustomPromptGeneration(selectedText, tab, promptId) {
         }
         
         if (response && response.success) {
-          // Show success notification
+          // Hide visual loading indicator and show success notification
+          try {
+            await chrome.scripting.executeScript({
+              target: { tabId: tab.id },
+              function: hideLoadingIndicator
+            });
+          } catch (e) {
+            console.warn('Could not hide visual loading indicator:', e);
+          }
+          
           chrome.tabs.sendMessage(tab.id, {
             action: 'showSuccess',
             requestId: requestId
@@ -153,13 +187,22 @@ async function handleCustomPromptGeneration(selectedText, tab, promptId) {
         }
       });
     } else {
-      // Show modal for multiple responses
+      // Hide visual loading indicator and show modal for multiple responses
+      try {
+        await chrome.scripting.executeScript({
+          target: { tabId: tab.id },
+          function: hideLoadingIndicator
+        });
+      } catch (e) {
+        console.warn('Could not hide visual loading indicator:', e);
+      }
+      
       chrome.tabs.sendMessage(tab.id, {
         action: 'showMultipleResponses',
         responses: responses,
         requestId: requestId,
         promptName: customPrompt.name
-      }, (response) => {
+      }, () => {
         if (chrome.runtime.lastError) {
           console.warn(`Could not display responses on tab ${tab.id}: ${chrome.runtime.lastError.message}`);
           showFallbackNotification('Error', 'Failed to display responses');
@@ -169,6 +212,16 @@ async function handleCustomPromptGeneration(selectedText, tab, promptId) {
     
   } catch (error) {
     console.error('Error generating custom prompt responses:', error);
+    
+    // Hide visual loading indicator on error
+    try {
+      await chrome.scripting.executeScript({
+        target: { tabId: tab.id },
+        function: hideLoadingIndicator
+      });
+    } catch (e) {
+      console.warn('Could not hide visual loading indicator on error:', e);
+    }
     
     let errorMessage;
     if (error && error.message) {
@@ -196,8 +249,10 @@ async function handleCustomPromptGeneration(selectedText, tab, promptId) {
 }
 
 // Function to handle comment generation
-async function handleCommentGeneration(selectedText, tab) {
-  const requestId = Date.now().toString();
+async function handleCommentGeneration(selectedText, tab, requestId = null) {
+  if (!requestId) {
+    requestId = Date.now().toString();
+  }
   
   try {
     const settings = await getSettings();
@@ -210,27 +265,21 @@ async function handleCommentGeneration(selectedText, tab) {
       };
     }
     
-    // Show loading notification immediately
+    // Update loading notification with specific response count
     try {
       chrome.tabs.sendMessage(tab.id, {
         action: 'showLoading',
         requestId: requestId,
         message: `Generating ${defaultResponseCount} response${defaultResponseCount > 1 ? 's' : ''}...`
-      }, (response) => {
-        if (chrome.runtime.lastError) {
-          console.warn(`Could not send loading notification to tab ${tab.id}: ${chrome.runtime.lastError.message}`);
-          showFallbackNotification('Generating Comment', 'Please wait while we generate your comment...');
-        }
       });
     } catch (e) {
-      console.error('Exception sending loading notification:', e);
-      showFallbackNotification('Generating Comment', 'Please wait while we generate your comment...');
+      console.warn('Could not update loading notification:', e);
     }
     
     // Create a pseudo custom prompt for default behavior to reuse existing multi-response logic
     const defaultPrompt = {
-      name: 'Default LinkedIn Comment',
-      promptText: 'Generate thoughtful, professional LinkedIn comments that add meaningful insights or perspectives to the discussion. Ask thoughtful questions when appropriate and share relevant experiences when fitting.',
+      name: 'Default Professional Comment',
+      promptText: 'Generate thoughtful, professional comments that add meaningful insights or perspectives to the discussion. Ask thoughtful questions when appropriate and share relevant experiences when fitting.',
       responseCount: defaultResponseCount
     };
     
@@ -252,7 +301,16 @@ async function handleCommentGeneration(selectedText, tab) {
         }
         
         if (response && response.success) {
-          // Show success notification
+          // Hide visual loading indicator and show success notification
+          try {
+            await chrome.scripting.executeScript({
+              target: { tabId: tab.id },
+              function: hideLoadingIndicator
+            });
+          } catch (e) {
+            console.warn('Could not hide visual loading indicator:', e);
+          }
+          
           chrome.tabs.sendMessage(tab.id, {
             action: 'showSuccess',
             requestId: requestId
@@ -270,13 +328,22 @@ async function handleCommentGeneration(selectedText, tab) {
         }
       });
     } else {
-      // Show modal for multiple responses
+      // Hide visual loading indicator and show modal for multiple responses
+      try {
+        await chrome.scripting.executeScript({
+          target: { tabId: tab.id },
+          function: hideLoadingIndicator
+        });
+      } catch (e) {
+        console.warn('Could not hide visual loading indicator:', e);
+      }
+      
       chrome.tabs.sendMessage(tab.id, {
         action: 'showMultipleResponses',
         responses: responses,
         requestId: requestId,
         promptName: defaultPrompt.name
-      }, (response) => {
+      }, () => {
         if (chrome.runtime.lastError) {
           console.warn(`Could not display responses on tab ${tab.id}: ${chrome.runtime.lastError.message}`);
           showFallbackNotification('Error', 'Failed to display responses');
@@ -286,6 +353,16 @@ async function handleCommentGeneration(selectedText, tab) {
     
   } catch (error) {
     console.error('Error generating comment:', error);
+    
+    // Hide visual loading indicator on error
+    try {
+      await chrome.scripting.executeScript({
+        target: { tabId: tab.id },
+        function: hideLoadingIndicator
+      });
+    } catch (e) {
+      console.warn('Could not hide visual loading indicator on error:', e);
+    }
     
     // Handle different error types with proper serialization
     let errorMessage;
@@ -378,13 +455,13 @@ async function generateMultipleCommentsWithJSON(selectedText, apiKey, customProm
   const languageName = getLanguageName(detectedLanguage);
   
   // Construct JSON prompt with custom text
-  const jsonPrompt = `You are a thoughtful LinkedIn professional. Generate ${numResponses} unique LinkedIn comment suggestions for the following post.
+  const jsonPrompt = `You are a thoughtful professional. Generate ${numResponses} unique comment suggestions for the following content.
 
 STRICT FORMATTING RULES:
 - Respond ONLY with a valid JSON object
 - The JSON object must have a single key called "sugestoes"
 - The value of "sugestoes" must be an array of ${numResponses} strings
-- Each string must be a unique, professional LinkedIn comment
+- Each string must be a unique, professional comment
 - Do not include any explanation, markdown, or additional text
 - Do not wrap in \`\`\`json blocks
 
@@ -392,13 +469,13 @@ CONTENT GUIDELINES:
 ${customPrompt.promptText}
 
 RESPONSE GUIDELINES:
-- The post appears to be in ${languageName} - respond in the same language
+- The content appears to be in ${languageName} - respond in the same language
 - Keep responses concise (2-3 sentences maximum)
 - Be specific, add value, and keep it authentic
 - Make each suggestion unique and different from the others
 - Maintain a professional yet personable tone
 
-POST CONTENT: "${selectedText}"
+CONTENT: "${selectedText}"
 
 Example format for ${numResponses} responses:
 {
@@ -534,7 +611,7 @@ async function generateCommentWithCustomPrompt(selectedText, apiKey, customPromp
   const fullPrompt = `${customPrompt.promptText}
 
 Guidelines:
-- The post appears to be in ${languageName} - respond in the same language
+- The content appears to be in ${languageName} - respond in the same language
 - Keep responses concise (2-3 sentences maximum)
 - Be specific, add value, and keep it authentic
 
@@ -627,7 +704,7 @@ async function generateComment(selectedText, apiKey) {
   const languageName = getLanguageName(detectedLanguage);
   
   // Enhanced prompt optimized for Gemini
-  const prompt = `You are a thoughtful LinkedIn professional. Generate a professional LinkedIn comment for the following post. 
+  const prompt = `You are a thoughtful professional. Generate a professional comment for the following content. 
 
 Guidelines:
 - Add meaningful insights or perspectives to the discussion
@@ -637,7 +714,7 @@ Guidelines:
 - Show genuine engagement with the content
 - Avoid generic responses like "Great post!" or "Thanks for sharing"
 - Keep responses concise (2-3 sentences maximum)
-- The post appears to be in ${languageName} - respond in the same language
+- The content appears to be in ${languageName} - respond in the same language
 - Be specific, add value, and keep it authentic
 
 Post content: "${selectedText}"
@@ -723,7 +800,7 @@ Generate only the comment text, without any additional explanation or formatting
 }
 
 // Update checker system
-const GITHUB_VERSION_URL = 'https://raw.githubusercontent.com/norato/gpt-linkedIn-commenter/main/version.json';
+const GITHUB_VERSION_URL = 'https://raw.githubusercontent.com/norato/ai-beautify-comment/main/version.json';
 const UPDATE_CHECK_ALARM = 'update-check-alarm';
 
 // Check for updates on startup and schedule periodic checks
@@ -850,3 +927,74 @@ chrome.runtime.onMessage.addListener((request, _, sendResponse) => {
   }
   return true;
 });
+
+// Function to show visual loading indicator (injected into content script context)
+function showLoadingIndicator(iconUrl) {
+  // Check if loader already exists to avoid duplicates
+  let host = document.getElementById('ai-loading-indicator-host');
+  if (host) {
+    host.style.display = 'flex';
+    const img = host.shadowRoot.querySelector('img');
+    if (img) {
+      img.style.animation = 'none';
+      void img.offsetWidth; // Trigger reflow
+      img.style.animation = 'spin 1.5s linear infinite';
+    }
+    return;
+  }
+
+  // Create host element for Shadow DOM
+  host = document.createElement('div');
+  host.id = 'ai-loading-indicator-host';
+  document.body.appendChild(host);
+
+  // Attach Shadow DOM
+  const shadowRoot = host.attachShadow({ mode: 'open' });
+
+  // HTML and CSS for the loader inside Shadow DOM
+  shadowRoot.innerHTML = `
+    <style>
+      :host {
+        position: fixed;
+        bottom: 20px;
+        right: 20px;
+        z-index: 2147483647;
+        
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 60px;
+        height: 60px;
+        background-color: rgba(59, 130, 246, 0.9);
+        border-radius: 12px;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+        overflow: hidden;
+        transition: opacity 0.3s ease-in-out;
+        opacity: 1;
+        backdrop-filter: blur(10px);
+      }
+      img {
+        width: 32px;
+        height: 32px;
+        animation: spin 1.5s linear infinite;
+        filter: brightness(0) invert(1);
+      }
+      @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+      }
+    </style>
+    <img src="${iconUrl}" alt="AI Processing">
+  `;
+}
+
+// Function to hide visual loading indicator (injected into content script context)
+function hideLoadingIndicator() {
+  const host = document.getElementById('ai-loading-indicator-host');
+  if (host) {
+    host.style.opacity = '0';
+    host.addEventListener('transitionend', () => {
+      host.remove();
+    }, { once: true });
+  }
+}
