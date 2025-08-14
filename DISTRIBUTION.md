@@ -1,12 +1,12 @@
-# Gemini LinkedIn Commenter - Distribution Guide
+# AI Beautify Comment - Distribution Guide
 
-A Chrome extension that generates professional LinkedIn comments using Google's Gemini 1.5 Flash model with automatic clipboard integration.
+A Chrome extension that enhances and generates professional comments on any website using Google's Gemini 1.5 Flash model with automatic clipboard integration.
 
 ## ⚠️ Important Disclaimer
 
-**This is an unofficial, open-source tool provided for educational and research purposes.** It is not affiliated with, endorsed by, or sponsored by LinkedIn Corporation or Google. 
+**This is an unofficial, open-source tool provided for educational and research purposes.** It is not affiliated with, endorsed by, or sponsored by any website, platform, or Google. 
 
-**Automating interactions on social media platforms may violate their Terms of Service.** You assume all responsibility for the use of this extension. The developers of this tool are not liable for any consequences, including but not limited to account suspension or termination.
+**Using AI tools on various platforms may conflict with their Terms of Service.** You assume all responsibility for the use of this extension. The developers of this tool are not liable for any consequences, including but not limited to account suspension or termination.
 
 ## 🔒 Security & Privacy
 
@@ -22,8 +22,8 @@ Since this extension is distributed via developer mode (not through the Chrome W
 
 ### Step 1: Download the Extension
 
-1. Go to the [Releases page](https://github.com/norato/gpt-linkedIn-commenter/releases)
-2. Download the latest `gemini-linkedin-commenter-vX.X.X.zip` file
+1. Go to the [Releases page](https://github.com/norato/ai-beautify-comment/releases)
+2. Download the latest `ai-beautify-comment-vX.X.X.zip` file
 3. **Important:** Extract the ZIP file to a **permanent location** on your computer (NOT your Downloads folder)
 
 > **⚠️ Warning:** You must unzip the extension files into a folder where they will **permanently reside**. Do not use your `Downloads` folder. If you move or delete the folder, Chrome will remove the extension.
@@ -54,12 +54,12 @@ Since this extension is distributed via developer mode (not through the Chrome W
 
 ## 🚀 How to Use
 
-1. Navigate to any LinkedIn post
-2. Select the text you want to comment on
-3. Right-click and choose "Generate LinkedIn Comment"
+1. Navigate to any website (social media, blogs, forums, etc.)
+2. Select the text you want to comment on or respond to
+3. Right-click and choose "Generate Professional Comment"
 4. Wait for the AI to generate a comment
 5. The comment will be automatically copied to your clipboard
-6. Paste (Ctrl+V / Cmd+V) in the LinkedIn comment field
+6. Paste (Ctrl+V / Cmd+V) in the comment field on any website
 7. **Always review and edit** the generated comment before posting
 
 ## ⚡ Developer Mode Limitations
@@ -79,15 +79,15 @@ This extension includes an automatic update checker that will notify you when ne
 
 ## 🛠️ Troubleshooting
 
-### "Generate LinkedIn Comment" option doesn't appear
-- Ensure you're on a LinkedIn page (`*.linkedin.com`)
-- Make sure you've selected some text from a post
+### "Generate Professional Comment" option doesn't appear
+- Make sure you've selected some text from a post or content
 - Try refreshing the page
+- Check that the extension is enabled in Chrome
 
 ### Comments not copying to clipboard
 - Check that you've saved your Gemini API key in the extension popup
 - Ensure your API key is valid and starts with "AIzaSy"
-- Try refreshing the LinkedIn page
+- Try refreshing the page
 
 ### Extension disappears after browser restart
 - Make sure you clicked "Cancel" on the developer mode popup
@@ -101,15 +101,15 @@ This extension includes an automatic update checker that will notify you when ne
 
 ## 🌍 Supported Languages
 
-The extension automatically detects the language of LinkedIn posts and responds in the same language. Supported languages include:
+The extension automatically detects the language of content and responds in the same language. Supported languages include:
 - English, Portuguese, Spanish, French
 - German, Italian, Russian, Japanese
 - Korean, Chinese, Arabic, Hindi
 
 ## 📞 Support
 
-- [Report an Issue](https://github.com/norato/gpt-linkedIn-commenter/issues)
-- [View Source Code](https://github.com/norato/gpt-linkedIn-commenter)
+- [Report an Issue](https://github.com/norato/ai-beautify-comment/issues)
+- [View Source Code](https://github.com/norato/ai-beautify-comment)
 
 ## 📄 License
 
@@ -117,6 +117,6 @@ MIT License - feel free to modify and distribute
 
 ---
 
-**Made with ❤️ for the LinkedIn community**
+**Made with ❤️ for better online communication everywhere**
 
-*Remember: Always review AI-generated content before posting. Use this tool responsibly and in accordance with LinkedIn's Terms of Service.*
+*Remember: Always review AI-generated content before posting. Use this tool responsibly and in accordance with each website's Terms of Service.*

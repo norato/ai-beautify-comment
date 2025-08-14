@@ -1,5 +1,5 @@
 {
-  "version": "2.2.0",
-  "release_url": "https://github.com/norato/gpt-linkedIn-commenter/releases/latest",
-  "release_notes": "Enhanced UX with improved error handling, better form layout, and fixed button positioning. Added API timeout handling and reorganized interface for better usability."
+  "version": "3.0.0",
+  "release_url": "https://github.com/norato/ai-beautify-comment/releases/latest",
+  "release_notes": "Major update: Removed manual language detection in favor of native Gemini capability. Added AI Beautify functionality with in-place text replacement. Reorganized context menu with visual hierarchy. Added separate response count settings for AI Comment and AI Beautify. Improved reliability and code simplification."
 }

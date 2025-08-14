@@ -1,12 +1,12 @@
 #!/bin/bash
 
-# Build script for Gemini LinkedIn Commenter Chrome Extension
-echo "🚀 Building Gemini LinkedIn Commenter..."
+# Build script for AI Beautify Comment Chrome Extension
+echo "🚀 Building AI Beautify Comment..."
 
 # Clean previous builds
 echo "🧹 Cleaning previous builds..."
 rm -rf dist
-rm -f gemini-linkedin-commenter-*.zip
+rm -f ai-beautify-comment-*.zip
 
 # Create build directory
 mkdir -p dist
@@ -29,11 +29,11 @@ ls -la dist/
 # Create distribution ZIP
 echo "📦 Creating distribution package..."
 cd dist
-zip -r ../gemini-linkedin-commenter-v$(grep '"version"' manifest.json | cut -d'"' -f4).zip .
+zip -r ../ai-beautify-comment-v$(grep '"version"' manifest.json | cut -d'"' -f4).zip .
 cd ..
 
 echo "🎉 Extension packaged successfully!"
-echo "📄 Package: gemini-linkedin-commenter-v$(grep '"version"' manifest.json | cut -d'"' -f4).zip"
+echo "📄 Package: ai-beautify-comment-v$(grep '"version"' manifest.json | cut -d'"' -f4).zip"
 echo ""
 echo "📋 Next steps:"
 echo "1. Test the extension by loading the 'dist' folder in Chrome"

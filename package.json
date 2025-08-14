@@ -1,0 +1,62 @@
+{
+  "name": "ai-beautify-comment",
+  "version": "3.0.0",
+  "description": "Enhance and generate professional comments on any website using Google's Gemini 1.5 Flash model",
+  "main": "background.js",
+  "scripts": {
+    "lint": "eslint . --ext .js --ignore-pattern node_modules/ --ignore-pattern dist/",
+    "lint:fix": "eslint . --ext .js --fix --ignore-pattern node_modules/ --ignore-pattern dist/",
+    "check": "npm run lint && npm run validate",
+    "validate": "node scripts/validate.js",
+    "syntax-check": "node -c background.js && node -c content.js && node -c popup.js && node -c utils.js",
+    "zip": "npm run check && node scripts/create-zip.js",
+    "test": "npm run syntax-check && npm run lint",
+    "preversion": "npm run check",
+    "version": "npm run zip",
+    "postversion": "git push && git push --tags"
+  },
+  "keywords": [
+    "chrome-extension",
+    "browser-extension",
+    "ai",
+    "gemini",
+    "comment-generation",
+    "text-improvement"
+  ],
+  "author": "norato",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/norato/ai-beautify-comment.git"
+  },
+  "devDependencies": {
+    "eslint": "^8.57.0"
+  },
+  "eslintConfig": {
+    "env": {
+      "browser": true,
+      "es2021": true,
+      "webextensions": true
+    },
+    "extends": [
+      "eslint:recommended"
+    ],
+    "parserOptions": {
+      "ecmaVersion": 2021,
+      "sourceType": "script"
+    },
+    "globals": {
+      "chrome": "readonly"
+    },
+    "rules": {
+      "no-unused-vars": "warn",
+      "no-console": "off",
+      "no-undef": "error",
+      "semi": ["error", "always"],
+      "quotes": ["error", "single", { "allowTemplateLiterals": true }]
+    }
+  },
+  "browserslist": [
+    "Chrome >= 88"
+  ]
+}

@@ -1,4 +1,4 @@
-// Service Worker for GPT LinkedIn Commenter
+// Service Worker for AI Beautify Comment
 
 // Load utilities
 try {
@@ -6,6 +6,9 @@ try {
 } catch (error) {
   console.error('Failed to load utils.js:', error);
 }
+
+// TypeScript declarations for utils functions (imported via importScripts)
+/* global getEnabledPrompts, getSettings, addPrompt, updatePrompt, deletePrompt, updateSettings, migrateStorage, ErrorTypes, ErrorMessages, parseGeminiError */
 
 // Extension lifecycle handlers
 chrome.runtime.onInstalled.addListener(async (details) => {
@@ -18,50 +21,86 @@ chrome.runtime.onInstalled.addListener(async (details) => {
     await migrateStorage();
   }
   
-  createContextMenu();
+  await createContextMenu();
   
   chrome.action.setIcon({
     path: {
-      "128": "icon.png"
+      '128': 'icon.png'
     }
   });
 });
 
 // Create context menu on startup
-chrome.runtime.onStartup.addListener(() => {
-  createContextMenu();
+chrome.runtime.onStartup.addListener(async () => {
+  await createContextMenu();
 });
 
 // Function to create context menu with dynamic custom prompts
 async function createContextMenu() {
-  chrome.contextMenus.removeAll(async () => {
-    try {
-      // Always add the default option
-      chrome.contextMenus.create({
-        id: "generateLinkedInComment",
-        title: "Generate LinkedIn Comment (Default)",
-        contexts: ["selection"],
-        documentUrlPatterns: ["*://*.linkedin.com/*"]
-      });
-      
-      // Add custom prompts as menu items
-      const enabledPrompts = await getEnabledPrompts();
-      enabledPrompts.forEach((prompt) => {
+  return new Promise((resolve) => {
+    chrome.contextMenus.removeAll(async () => {
+      try {
+        // 1. AI Beautify (improve your own text) - positioned first
+        chrome.contextMenus.create({
+          id: 'beautifyText',
+          title: 'AI Beautify (improve yours)',
+          contexts: ['selection'],
+          documentUrlPatterns: ['*://*/*']
+        }, () => {
+          if (chrome.runtime.lastError) {
+            console.error('Error creating AI Beautify menu:', chrome.runtime.lastError);
+          }
+        });
+        
+        // 2. Visual separator
+        chrome.contextMenus.create({
+          id: 'separator1',
+          type: 'separator',
+          contexts: ['selection'],
+          documentUrlPatterns: ['*://*/*']
+        }, () => {
+          if (chrome.runtime.lastError) {
+            console.error('Error creating separator:', chrome.runtime.lastError);
+          }
+        });
+
+        // 3. AI Comment (generate comments from content)
+        chrome.contextMenus.create({
+          id: 'generateProfessionalComment',
+          title: 'AI Comment (default)',
+          contexts: ['selection'],
+          documentUrlPatterns: ['*://*/*']
+        }, () => {
+          if (chrome.runtime.lastError) {
+            console.error('Error creating AI Comment menu:', chrome.runtime.lastError);
+          }
+        });
+        
+        // 4. Add custom prompts as additional comment options
         try {
-          chrome.contextMenus.create({
-            id: `custom-prompt-${prompt.id}`,
-            title: prompt.name,
-            contexts: ["selection"],
-            documentUrlPatterns: ["*://*.linkedin.com/*"]
+          const enabledPrompts = await getEnabledPrompts();
+          enabledPrompts.forEach((prompt) => {
+            chrome.contextMenus.create({
+              id: `custom-prompt-${prompt.id}`,
+              title: prompt.name,
+              contexts: ['selection'],
+              documentUrlPatterns: ['*://*/*']
+            }, () => {
+              if (chrome.runtime.lastError) {
+                console.error(`Error creating custom prompt menu ${prompt.name}:`, chrome.runtime.lastError);
+              }
+            });
           });
         } catch (error) {
-          console.error(`Failed to create menu item for prompt ${prompt.name}:`, error);
+          console.error('Error getting enabled prompts:', error);
         }
-      });
-      
-    } catch (error) {
-      console.error('Failed to create context menu:', error);
-    }
+        
+        resolve();
+      } catch (error) {
+        console.error('Failed to create context menu:', error);
+        resolve();
+      }
+    });
   });
 }
 
@@ -69,19 +108,217 @@ async function createContextMenu() {
 chrome.contextMenus.onClicked.addListener(async (info, tab) => {
   if (!info.selectionText) return;
   
-  if (info.menuItemId === "generateLinkedInComment") {
-    // Default prompt
-    handleCommentGeneration(info.selectionText, tab);
-  } else if (info.menuItemId.startsWith("custom-prompt-")) {
+  // Show immediate visual loading indicator
+  const requestId = Date.now().toString();
+  try {
+    await chrome.scripting.executeScript({
+      target: { tabId: tab.id },
+      function: showLoadingIndicator,
+      args: [chrome.runtime.getURL('icon.png')]
+    });
+  } catch (e) {
+    console.warn('Could not show visual loading indicator:', e);
+    // Fallback to notification if scripting fails
+    try {
+      chrome.tabs.sendMessage(tab.id, {
+        action: 'showLoading',
+        requestId: requestId,
+        message: 'AI is working...'
+      }, () => {
+        if (chrome.runtime.lastError) {
+          console.warn('Could not show loading notification fallback:', chrome.runtime.lastError);
+        }
+      });
+    } catch (fallbackError) {
+      console.warn('Could not show loading fallback:', fallbackError);
+    }
+  }
+  
+  if (info.menuItemId === 'generateProfessionalComment') {
+    // Default comment generation
+    handleCommentGeneration(info.selectionText, tab, requestId);
+  } else if (info.menuItemId === 'beautifyText') {
+    // AI Beautify text improvement
+    handleTextBeautification(info.selectionText, tab, requestId);
+  } else if (info.menuItemId.startsWith('custom-prompt-')) {
     // Custom prompt
-    const promptId = info.menuItemId.replace("custom-prompt-", "");
-    handleCustomPromptGeneration(info.selectionText, tab, promptId);
+    const promptId = info.menuItemId.replace('custom-prompt-', '');
+    handleCustomPromptGeneration(info.selectionText, tab, promptId, requestId);
   }
 });
 
+// Function to handle text beautification
+async function handleTextBeautification(selectedText, tab, requestId = null) {
+  if (!requestId) {
+    requestId = Date.now().toString();
+  }
+  
+  try {
+    const settings = await getSettings();
+    const { apiKey, defaultBeautifyResponseCount = 3 } = settings;
+    
+    if (!apiKey) {
+      throw { 
+        type: ErrorTypes.API_KEY_MISSING, 
+        message: ErrorMessages[ErrorTypes.API_KEY_MISSING] 
+      };
+    }
+    
+    // Update loading notification with specific response count
+    try {
+      chrome.tabs.sendMessage(tab.id, {
+        action: 'showLoading',
+        requestId: requestId,
+        message: `Beautifying text with ${defaultBeautifyResponseCount} response${defaultBeautifyResponseCount > 1 ? 's' : ''}...`
+      });
+    } catch (e) {
+      console.warn('Could not update loading notification:', e);
+    }
+    
+    // Create a pseudo custom prompt for beautify behavior to reuse existing multi-response logic
+    const beautifyPrompt = {
+      name: 'AI Text Beautifier',
+      promptText: 'Improve and enhance the following text to make it more professional, clear, and engaging. Maintain the original meaning while improving grammar, style, and flow. IMPORTANT: Respond in the same language as the input text.',
+      responseCount: defaultBeautifyResponseCount
+    };
+    
+    // Generate multiple beautified versions using the same logic as custom prompts
+    const responses = await generateMultipleComments(selectedText, apiKey, beautifyPrompt);
+    
+    // Handle response based on count: auto-replace for 1, show modal for multiple
+    if (defaultBeautifyResponseCount === 1) {
+      // Auto-replace single response in place
+      try {
+        const results = await chrome.scripting.executeScript({
+          target: { tabId: tab.id },
+          function: replaceSelectedTextInPlace,
+          args: [responses[0]]
+        });
+
+        // Hide visual loading indicator
+        try {
+          await chrome.scripting.executeScript({
+            target: { tabId: tab.id },
+            function: hideLoadingIndicator
+          });
+        } catch (e) {
+          console.warn('Could not hide visual loading indicator:', e);
+        }
+
+        if (results && results[0] && results[0].result) {
+          const result = results[0].result;
+          
+          if (result.success && result.method === 'replace_in_place') {
+            // Text was successfully replaced in place
+            chrome.tabs.sendMessage(tab.id, {
+              action: 'showSuccess',
+              requestId: requestId
+            }, () => {
+              if (chrome.runtime.lastError) {
+                console.warn(`Could not show success notification on tab ${tab.id}: ${chrome.runtime.lastError.message}`);
+                showFallbackNotification('Text Beautified!', 'Your text has been improved in place.');
+              }
+            });
+          } else {
+            // Text was copied to clipboard as fallback
+            chrome.tabs.sendMessage(tab.id, {
+              action: 'showSuccess',
+              requestId: requestId
+            }, () => {
+              if (chrome.runtime.lastError) {
+                console.warn(`Could not show success notification on tab ${tab.id}: ${chrome.runtime.lastError.message}`);
+                let message = 'The improved text has been copied to your clipboard.';
+                if (result.reason === 'not_editable') {
+                  message = 'Text copied to clipboard (selected area is not editable).';
+                }
+                showFallbackNotification('Text Beautified!', message);
+              }
+            });
+          }
+        } else {
+          throw new Error('No result from text replacement script');
+        }
+      } catch (error) {
+        console.error('Error replacing text in place:', error);
+        // Fallback to clipboard copy
+        chrome.tabs.sendMessage(tab.id, {
+          action: 'copyToClipboard',
+          text: responses[0],
+          requestId: requestId
+        }, () => {
+          if (chrome.runtime.lastError) {
+            console.warn('Fallback clipboard copy failed:', chrome.runtime.lastError);
+          }
+        });
+      }
+    } else {
+      // Hide visual loading indicator and show modal for multiple responses
+      try {
+        await chrome.scripting.executeScript({
+          target: { tabId: tab.id },
+          function: hideLoadingIndicator
+        });
+      } catch (e) {
+        console.warn('Could not hide visual loading indicator:', e);
+      }
+      
+      chrome.tabs.sendMessage(tab.id, {
+        action: 'showMultipleResponses',
+        responses: responses,
+        requestId: requestId,
+        promptName: beautifyPrompt.name
+      }, () => {
+        if (chrome.runtime.lastError) {
+          console.warn(`Could not display responses on tab ${tab.id}: ${chrome.runtime.lastError.message}`);
+          showFallbackNotification('Error', 'Failed to display responses');
+        }
+      });
+    }
+    
+  } catch (error) {
+    console.error('Error beautifying text:', error);
+    
+    // Hide visual loading indicator on error
+    try {
+      await chrome.scripting.executeScript({
+        target: { tabId: tab.id },
+        function: hideLoadingIndicator
+      });
+    } catch (e) {
+      console.warn('Could not hide visual loading indicator on error:', e);
+    }
+    
+    // Handle different error types with proper serialization
+    let errorMessage;
+    if (error && error.message) {
+      errorMessage = error.message;
+    } else if (error && error.type && ErrorMessages[error.type]) {
+      errorMessage = ErrorMessages[error.type];
+    } else if (typeof error === 'string') {
+      errorMessage = error;
+    } else {
+      errorMessage = ErrorMessages[ErrorTypes.UNKNOWN];
+    }
+    
+    // Show error notification
+    chrome.tabs.sendMessage(tab.id, {
+      action: 'showError',
+      message: errorMessage,
+      requestId: requestId
+    }, () => {
+      if (chrome.runtime.lastError) {
+        console.warn(`Could not show error notification on tab ${tab.id}: ${chrome.runtime.lastError.message}`);
+        showFallbackNotification('Error', errorMessage);
+      }
+    });
+  }
+}
+
 // Function to handle custom prompt generation with multiple responses
-async function handleCustomPromptGeneration(selectedText, tab, promptId) {
-  const requestId = Date.now().toString();
+async function handleCustomPromptGeneration(selectedText, tab, promptId, requestId = null) {
+  if (!requestId) {
+    requestId = Date.now().toString();
+  }
   
   try {
     const settings = await getSettings();
@@ -100,21 +337,15 @@ async function handleCustomPromptGeneration(selectedText, tab, promptId) {
       throw new Error('Custom prompt not found');
     }
     
-    // Show loading notification
+    // Update loading notification with specific response count
     try {
       chrome.tabs.sendMessage(tab.id, {
         action: 'showLoading',
         requestId: requestId,
-        message: `Generating ${customPrompt.responseCount} responses...`
-      }, (response) => {
-        if (chrome.runtime.lastError) {
-          console.warn(`Could not send loading notification to tab ${tab.id}: ${chrome.runtime.lastError.message}`);
-          showFallbackNotification('Generating Responses', `Please wait while we generate ${customPrompt.responseCount} responses...`);
-        }
+        message: `Generating ${customPrompt.responseCount} response${customPrompt.responseCount > 1 ? 's' : ''}...`
       });
     } catch (e) {
-      console.error('Exception sending loading notification:', e);
-      showFallbackNotification('Generating Responses', `Please wait while we generate ${customPrompt.responseCount} responses...`);
+      console.warn('Could not update loading notification:', e);
     }
     
     // Generate multiple comments
@@ -135,7 +366,16 @@ async function handleCustomPromptGeneration(selectedText, tab, promptId) {
         }
         
         if (response && response.success) {
-          // Show success notification
+          // Hide visual loading indicator and show success notification
+          try {
+            await chrome.scripting.executeScript({
+              target: { tabId: tab.id },
+              function: hideLoadingIndicator
+            });
+          } catch (e) {
+            console.warn('Could not hide visual loading indicator:', e);
+          }
+          
           chrome.tabs.sendMessage(tab.id, {
             action: 'showSuccess',
             requestId: requestId
@@ -153,13 +393,22 @@ async function handleCustomPromptGeneration(selectedText, tab, promptId) {
         }
       });
     } else {
-      // Show modal for multiple responses
+      // Hide visual loading indicator and show modal for multiple responses
+      try {
+        await chrome.scripting.executeScript({
+          target: { tabId: tab.id },
+          function: hideLoadingIndicator
+        });
+      } catch (e) {
+        console.warn('Could not hide visual loading indicator:', e);
+      }
+      
       chrome.tabs.sendMessage(tab.id, {
         action: 'showMultipleResponses',
         responses: responses,
         requestId: requestId,
         promptName: customPrompt.name
-      }, (response) => {
+      }, () => {
         if (chrome.runtime.lastError) {
           console.warn(`Could not display responses on tab ${tab.id}: ${chrome.runtime.lastError.message}`);
           showFallbackNotification('Error', 'Failed to display responses');
@@ -169,6 +418,16 @@ async function handleCustomPromptGeneration(selectedText, tab, promptId) {
     
   } catch (error) {
     console.error('Error generating custom prompt responses:', error);
+    
+    // Hide visual loading indicator on error
+    try {
+      await chrome.scripting.executeScript({
+        target: { tabId: tab.id },
+        function: hideLoadingIndicator
+      });
+    } catch (e) {
+      console.warn('Could not hide visual loading indicator on error:', e);
+    }
     
     let errorMessage;
     if (error && error.message) {
@@ -196,8 +455,10 @@ async function handleCustomPromptGeneration(selectedText, tab, promptId) {
 }
 
 // Function to handle comment generation
-async function handleCommentGeneration(selectedText, tab) {
-  const requestId = Date.now().toString();
+async function handleCommentGeneration(selectedText, tab, requestId = null) {
+  if (!requestId) {
+    requestId = Date.now().toString();
+  }
   
   try {
     const settings = await getSettings();
@@ -210,27 +471,21 @@ async function handleCommentGeneration(selectedText, tab) {
       };
     }
     
-    // Show loading notification immediately
+    // Update loading notification with specific response count
     try {
       chrome.tabs.sendMessage(tab.id, {
         action: 'showLoading',
         requestId: requestId,
         message: `Generating ${defaultResponseCount} response${defaultResponseCount > 1 ? 's' : ''}...`
-      }, (response) => {
-        if (chrome.runtime.lastError) {
-          console.warn(`Could not send loading notification to tab ${tab.id}: ${chrome.runtime.lastError.message}`);
-          showFallbackNotification('Generating Comment', 'Please wait while we generate your comment...');
-        }
       });
     } catch (e) {
-      console.error('Exception sending loading notification:', e);
-      showFallbackNotification('Generating Comment', 'Please wait while we generate your comment...');
+      console.warn('Could not update loading notification:', e);
     }
     
     // Create a pseudo custom prompt for default behavior to reuse existing multi-response logic
     const defaultPrompt = {
-      name: 'Default LinkedIn Comment',
-      promptText: 'Generate thoughtful, professional LinkedIn comments that add meaningful insights or perspectives to the discussion. Ask thoughtful questions when appropriate and share relevant experiences when fitting.',
+      name: 'Default Professional Comment',
+      promptText: 'Generate thoughtful, professional comments that add meaningful insights or perspectives to the discussion. Ask thoughtful questions when appropriate and share relevant experiences when fitting. Respond in the same language as the input text.',
       responseCount: defaultResponseCount
     };
     
@@ -252,7 +507,16 @@ async function handleCommentGeneration(selectedText, tab) {
         }
         
         if (response && response.success) {
-          // Show success notification
+          // Hide visual loading indicator and show success notification
+          try {
+            await chrome.scripting.executeScript({
+              target: { tabId: tab.id },
+              function: hideLoadingIndicator
+            });
+          } catch (e) {
+            console.warn('Could not hide visual loading indicator:', e);
+          }
+          
           chrome.tabs.sendMessage(tab.id, {
             action: 'showSuccess',
             requestId: requestId
@@ -270,13 +534,22 @@ async function handleCommentGeneration(selectedText, tab) {
         }
       });
     } else {
-      // Show modal for multiple responses
+      // Hide visual loading indicator and show modal for multiple responses
+      try {
+        await chrome.scripting.executeScript({
+          target: { tabId: tab.id },
+          function: hideLoadingIndicator
+        });
+      } catch (e) {
+        console.warn('Could not hide visual loading indicator:', e);
+      }
+      
       chrome.tabs.sendMessage(tab.id, {
         action: 'showMultipleResponses',
         responses: responses,
         requestId: requestId,
         promptName: defaultPrompt.name
-      }, (response) => {
+      }, () => {
         if (chrome.runtime.lastError) {
           console.warn(`Could not display responses on tab ${tab.id}: ${chrome.runtime.lastError.message}`);
           showFallbackNotification('Error', 'Failed to display responses');
@@ -286,6 +559,16 @@ async function handleCommentGeneration(selectedText, tab) {
     
   } catch (error) {
     console.error('Error generating comment:', error);
+    
+    // Hide visual loading indicator on error
+    try {
+      await chrome.scripting.executeScript({
+        target: { tabId: tab.id },
+        function: hideLoadingIndicator
+      });
+    } catch (e) {
+      console.warn('Could not hide visual loading indicator on error:', e);
+    }
     
     // Handle different error types with proper serialization
     let errorMessage;
@@ -373,18 +656,14 @@ async function generateMultipleComments(selectedText, apiKey, customPrompt) {
 
 // New function: Generate multiple comments using JSON prompt engineering
 async function generateMultipleCommentsWithJSON(selectedText, apiKey, customPrompt, numResponses) {
-  // Detect language of the post
-  const detectedLanguage = detectLanguage(selectedText);
-  const languageName = getLanguageName(detectedLanguage);
-  
   // Construct JSON prompt with custom text
-  const jsonPrompt = `You are a thoughtful LinkedIn professional. Generate ${numResponses} unique LinkedIn comment suggestions for the following post.
+  const jsonPrompt = `You are a thoughtful professional. Generate ${numResponses} unique comment suggestions for the following content.
 
 STRICT FORMATTING RULES:
 - Respond ONLY with a valid JSON object
 - The JSON object must have a single key called "sugestoes"
 - The value of "sugestoes" must be an array of ${numResponses} strings
-- Each string must be a unique, professional LinkedIn comment
+- Each string must be a unique, professional comment
 - Do not include any explanation, markdown, or additional text
 - Do not wrap in \`\`\`json blocks
 
@@ -392,13 +671,12 @@ CONTENT GUIDELINES:
 ${customPrompt.promptText}
 
 RESPONSE GUIDELINES:
-- The post appears to be in ${languageName} - respond in the same language
 - Keep responses concise (2-3 sentences maximum)
 - Be specific, add value, and keep it authentic
 - Make each suggestion unique and different from the others
 - Maintain a professional yet personable tone
 
-POST CONTENT: "${selectedText}"
+CONTENT: "${selectedText}"
 
 Example format for ${numResponses} responses:
 {
@@ -526,15 +804,10 @@ async function generateMultipleCommentsLegacy(selectedText, apiKey, customPrompt
 
 // Function to call Gemini API with custom prompt
 async function generateCommentWithCustomPrompt(selectedText, apiKey, customPrompt) {
-  // Detect language of the post
-  const detectedLanguage = detectLanguage(selectedText);
-  const languageName = getLanguageName(detectedLanguage);
-  
   // Construct prompt with custom text
   const fullPrompt = `${customPrompt.promptText}
 
 Guidelines:
-- The post appears to be in ${languageName} - respond in the same language
 - Keep responses concise (2-3 sentences maximum)
 - Be specific, add value, and keep it authentic
 
@@ -622,12 +895,8 @@ Generate only the comment text, without any additional explanation or formatting
 
 // Function to call Gemini API
 async function generateComment(selectedText, apiKey) {
-  // Detect language of the post
-  const detectedLanguage = detectLanguage(selectedText);
-  const languageName = getLanguageName(detectedLanguage);
-  
   // Enhanced prompt optimized for Gemini
-  const prompt = `You are a thoughtful LinkedIn professional. Generate a professional LinkedIn comment for the following post. 
+  const prompt = `You are a thoughtful professional. Generate a professional comment for the following content. 
 
 Guidelines:
 - Add meaningful insights or perspectives to the discussion
@@ -637,7 +906,7 @@ Guidelines:
 - Show genuine engagement with the content
 - Avoid generic responses like "Great post!" or "Thanks for sharing"
 - Keep responses concise (2-3 sentences maximum)
-- The post appears to be in ${languageName} - respond in the same language
+- Respond in the same language as the input text
 - Be specific, add value, and keep it authentic
 
 Post content: "${selectedText}"
@@ -723,7 +992,7 @@ Generate only the comment text, without any additional explanation or formatting
 }
 
 // Update checker system
-const GITHUB_VERSION_URL = 'https://raw.githubusercontent.com/norato/gpt-linkedIn-commenter/main/version.json';
+const GITHUB_VERSION_URL = 'https://raw.githubusercontent.com/norato/ai-beautify-comment/main/version.json';
 const UPDATE_CHECK_ALARM = 'update-check-alarm';
 
 // Check for updates on startup and schedule periodic checks
@@ -762,7 +1031,7 @@ async function checkForUpdates() {
   try {
     const response = await fetch(GITHUB_VERSION_URL, { cache: 'no-cache' });
     if (!response.ok) {
-      console.warn("Update check failed: Network response was not ok.");
+      console.warn('Update check failed: Network response was not ok.');
       return;
     }
 
@@ -780,7 +1049,7 @@ async function checkForUpdates() {
       chrome.storage.local.remove('updateInfo');
     }
   } catch (error) {
-    console.warn("Update check failed:", error);
+    console.warn('Update check failed:', error);
   }
 }
 
@@ -850,3 +1119,155 @@ chrome.runtime.onMessage.addListener((request, _, sendResponse) => {
   }
   return true;
 });
+
+// Function to show visual loading indicator (injected into content script context)
+function showLoadingIndicator(iconUrl) {
+  // Check if loader already exists to avoid duplicates
+  let host = document.getElementById('ai-loading-indicator-host');
+  if (host) {
+    host.style.display = 'flex';
+    const img = host.shadowRoot.querySelector('img');
+    if (img) {
+      img.style.animation = 'none';
+      void img.offsetWidth; // Trigger reflow
+      img.style.animation = 'spin 1.5s linear infinite';
+    }
+    return;
+  }
+
+  // Create host element for Shadow DOM
+  host = document.createElement('div');
+  host.id = 'ai-loading-indicator-host';
+  document.body.appendChild(host);
+
+  // Attach Shadow DOM
+  const shadowRoot = host.attachShadow({ mode: 'open' });
+
+  // HTML and CSS for the loader inside Shadow DOM
+  shadowRoot.innerHTML = `
+    <style>
+      :host {
+        position: fixed;
+        bottom: 20px;
+        right: 20px;
+        z-index: 2147483647;
+        
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 60px;
+        height: 60px;
+        background-color: rgba(59, 130, 246, 0.9);
+        border-radius: 12px;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+        overflow: hidden;
+        transition: opacity 0.3s ease-in-out;
+        opacity: 1;
+        backdrop-filter: blur(10px);
+      }
+      img {
+        width: 32px;
+        height: 32px;
+        animation: spin 1.5s linear infinite;
+        filter: brightness(0) invert(1);
+      }
+      @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+      }
+    </style>
+    <img src="${iconUrl}" alt="AI Processing">
+  `;
+}
+
+// Function to hide visual loading indicator (injected into content script context)
+function hideLoadingIndicator() {
+  const host = document.getElementById('ai-loading-indicator-host');
+  if (host) {
+    host.style.opacity = '0';
+    host.addEventListener('transitionend', () => {
+      host.remove();
+    }, { once: true });
+  }
+}
+
+// Function to replace selected text in place (injected into content script context)
+function replaceSelectedTextInPlace(improvedText) {
+  const selection = window.getSelection();
+  if (!selection || selection.rangeCount === 0) {
+    console.warn('No text selected for replacement. Copying to clipboard instead.');
+    navigator.clipboard.writeText(improvedText);
+    return { success: false, reason: 'no_selection', method: 'clipboard' };
+  }
+
+  const range = selection.getRangeAt(0);
+  let targetElement = range.commonAncestorContainer;
+  
+  // Find the parent element if we're in a text node
+  while (targetElement && targetElement.nodeType !== Node.ELEMENT_NODE) {
+    targetElement = targetElement.parentNode;
+  }
+
+  // Check if the element is editable
+  const isEditable = targetElement && (
+    (targetElement.tagName === 'INPUT' && 
+     !['button', 'checkbox', 'radio', 'submit', 'reset', 'file', 'image'].includes(targetElement.type)) ||
+    targetElement.tagName === 'TEXTAREA' ||
+    targetElement.isContentEditable ||
+    targetElement.getAttribute('contenteditable') === 'true'
+  );
+
+  if (isEditable) {
+    try {
+      // Save scroll position to prevent visual jumps
+      const scrollY = window.scrollY;
+      const scrollX = window.scrollX;
+
+      if (targetElement.tagName === 'INPUT' || targetElement.tagName === 'TEXTAREA') {
+        // Handle input and textarea elements
+        const start = targetElement.selectionStart;
+        const end = targetElement.selectionEnd;
+        const newValue = targetElement.value.substring(0, start) + improvedText + targetElement.value.substring(end);
+        targetElement.value = newValue;
+
+        // Restore cursor position at the end of inserted text
+        targetElement.setSelectionRange(start + improvedText.length, start + improvedText.length);
+
+        // Dispatch input event for JavaScript frameworks
+        targetElement.dispatchEvent(new Event('input', { bubbles: true }));
+        targetElement.dispatchEvent(new Event('change', { bubbles: true }));
+
+      } else if (targetElement.isContentEditable || targetElement.getAttribute('contenteditable') === 'true') {
+        // Handle contenteditable elements
+        range.deleteContents(); // Remove selected text
+        const textNode = document.createTextNode(improvedText);
+        range.insertNode(textNode); // Insert new text
+
+        // Restore selection/cursor after the inserted text
+        selection.removeAllRanges();
+        range.setStartAfter(textNode);
+        range.setEndAfter(textNode);
+        selection.addRange(range);
+
+        // Dispatch input event for contenteditable
+        targetElement.dispatchEvent(new Event('input', { bubbles: true }));
+      }
+
+      // Restore scroll position
+      window.scrollTo(scrollX, scrollY);
+
+      return { success: true, method: 'replace_in_place' };
+
+    } catch (e) {
+      console.error('Error replacing text:', e);
+      // Fallback to clipboard if replacement fails
+      navigator.clipboard.writeText(improvedText);
+      return { success: false, reason: 'replacement_error', method: 'clipboard', error: e.message };
+    }
+  } else {
+    // If element is not editable, copy to clipboard
+    console.log('Selection is not in an editable element. Copying to clipboard instead.');
+    navigator.clipboard.writeText(improvedText);
+    return { success: false, reason: 'not_editable', method: 'clipboard' };
+  }
+}
