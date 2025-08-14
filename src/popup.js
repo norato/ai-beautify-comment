@@ -5,6 +5,7 @@ let cleanupFunctions = [];
 let currentPrompts = [];
 
 document.addEventListener('DOMContentLoaded', async () => {
+    console.log('🤖 AI Beautify Comment - Popup loaded');
     // Tab elements
     const apiKeyTabBtn = document.getElementById('apiKeyTabBtn');
     const customPromptsTabBtn = document.getElementById('customPromptsTabBtn');

@@ -12,15 +12,18 @@ try {
 
 // Extension lifecycle handlers
 chrome.runtime.onInstalled.addListener(async (details) => {
+  console.log('🤖 AI Beautify Comment - Extension lifecycle event:', details.reason);
+  
   // Initialize or migrate storage based on installation type
   if (details.reason === 'install') {
-    console.log('Extension installed - initializing storage');
+    console.log('🤖 AI Beautify Comment - Extension installed, initializing storage');
     await migrateStorage();
   } else if (details.reason === 'update') {
-    console.log('Extension updated - checking for storage migration');
+    console.log('🤖 AI Beautify Comment - Extension updated, checking for storage migration');
     await migrateStorage();
   }
   
+  console.log('🤖 AI Beautify Comment - Creating context menu');
   await createContextMenu();
   
   chrome.action.setIcon({
@@ -32,13 +35,16 @@ chrome.runtime.onInstalled.addListener(async (details) => {
 
 // Create context menu on startup
 chrome.runtime.onStartup.addListener(async () => {
+  console.log('🤖 AI Beautify Comment - Extension startup, recreating context menu');
   await createContextMenu();
 });
 
 // Function to create context menu with dynamic custom prompts
 async function createContextMenu() {
+  console.log('🤖 AI Beautify Comment - Starting context menu creation');
   return new Promise((resolve) => {
     chrome.contextMenus.removeAll(async () => {
+      console.log('🤖 AI Beautify Comment - Removed existing context menus');
       try {
         // 1. AI Beautify (improve your own text) - positioned first
         chrome.contextMenus.create({
@@ -106,18 +112,28 @@ async function createContextMenu() {
 
 // Handle context menu clicks
 chrome.contextMenus.onClicked.addListener(async (info, tab) => {
-  if (!info.selectionText) return;
+  console.log('🤖 AI Beautify Comment - Context menu clicked:', info.menuItemId, 'on tab:', tab.id);
+  
+  if (!info.selectionText) {
+    console.log('🤖 AI Beautify Comment - No text selected, ignoring click');
+    return;
+  }
+  
+  console.log('🤖 AI Beautify Comment - Selected text length:', info.selectionText.length);
   
   // Show immediate visual loading indicator
   const requestId = Date.now().toString();
+  console.log('🤖 AI Beautify Comment - Generated request ID:', requestId);
+  
   try {
+    console.log('🤖 AI Beautify Comment - Showing loading indicator');
     await chrome.scripting.executeScript({
       target: { tabId: tab.id },
       function: showLoadingIndicator,
       args: [chrome.runtime.getURL('icon.png')]
     });
   } catch (e) {
-    console.warn('Could not show visual loading indicator:', e);
+    console.warn('🤖 AI Beautify Comment - Could not show visual loading indicator:', e);
     // Fallback to notification if scripting fails
     try {
       chrome.tabs.sendMessage(tab.id, {
@@ -135,27 +151,32 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
   }
   
   if (info.menuItemId === 'generateProfessionalComment') {
-    // Default comment generation
+    console.log('🤖 AI Beautify Comment - Handling default comment generation');
     handleCommentGeneration(info.selectionText, tab, requestId);
   } else if (info.menuItemId === 'beautifyText') {
-    // AI Beautify text improvement
+    console.log('🤖 AI Beautify Comment - Handling text beautification');
     handleTextBeautification(info.selectionText, tab, requestId);
   } else if (info.menuItemId.startsWith('custom-prompt-')) {
-    // Custom prompt
     const promptId = info.menuItemId.replace('custom-prompt-', '');
+    console.log('🤖 AI Beautify Comment - Handling custom prompt:', promptId);
     handleCustomPromptGeneration(info.selectionText, tab, promptId, requestId);
   }
 });
 
 // Function to handle text beautification
 async function handleTextBeautification(selectedText, tab, requestId = null) {
+  console.log('🤖 AI Beautify Comment - Starting text beautification, request ID:', requestId);
+  
   if (!requestId) {
     requestId = Date.now().toString();
   }
   
   try {
+    console.log('🤖 AI Beautify Comment - Getting settings for beautification');
     const settings = await getSettings();
     const { apiKey, defaultBeautifyResponseCount = 3 } = settings;
+    
+    console.log('🤖 AI Beautify Comment - Response count for beautification:', defaultBeautifyResponseCount);
     
     if (!apiKey) {
       throw { 
@@ -183,7 +204,9 @@ async function handleTextBeautification(selectedText, tab, requestId = null) {
     };
     
     // Generate multiple beautified versions using the same logic as custom prompts
+    console.log('🤖 AI Beautify Comment - Calling API for text beautification');
     const responses = await generateMultipleComments(selectedText, apiKey, beautifyPrompt);
+    console.log('🤖 AI Beautify Comment - Received', responses.length, 'beautified responses');
     
     // Handle response based on count: auto-replace for 1, show modal for multiple
     if (defaultBeautifyResponseCount === 1) {
@@ -636,10 +659,12 @@ async function showFallbackNotification(title, message) {
 // Function to generate multiple comments using JSON prompt engineering (single API call)
 async function generateMultipleComments(selectedText, apiKey, customPrompt) {
   const numResponses = customPrompt.responseCount;
+  console.log('🤖 AI Beautify Comment - Generating', numResponses, 'responses using JSON approach');
   
   try {
     // Use single API call with JSON prompt engineering for better performance
     const responses = await generateMultipleCommentsWithJSON(selectedText, apiKey, customPrompt, numResponses);
+    console.log('🤖 AI Beautify Comment - JSON approach successful, got', responses.length, 'responses');
     
     if (!responses || responses.length === 0) {
       throw new Error('Failed to generate any responses');
@@ -647,7 +672,7 @@ async function generateMultipleComments(selectedText, apiKey, customPrompt) {
     
     return responses;
   } catch (error) {
-    console.warn('JSON approach failed, falling back to multiple API calls:', error);
+    console.warn('🤖 AI Beautify Comment - JSON approach failed, falling back to multiple API calls:', error);
     
     // Fallback to original approach if JSON parsing fails
     return await generateMultipleCommentsLegacy(selectedText, apiKey, customPrompt);
@@ -656,6 +681,8 @@ async function generateMultipleComments(selectedText, apiKey, customPrompt) {
 
 // New function: Generate multiple comments using JSON prompt engineering
 async function generateMultipleCommentsWithJSON(selectedText, apiKey, customPrompt, numResponses) {
+  console.log('🤖 AI Beautify Comment - Building JSON prompt for', numResponses, 'responses');
+  
   // Construct JSON prompt with custom text
   const jsonPrompt = `You are a thoughtful professional. Generate ${numResponses} unique comment suggestions for the following content.
 
@@ -687,6 +714,7 @@ Example format for ${numResponses} responses:
 }`;
 
   try {
+    console.log('🤖 AI Beautify Comment - Making API call to Gemini');
     const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`, {
       method: 'POST',
       headers: {

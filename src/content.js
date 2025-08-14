@@ -637,9 +637,12 @@ function injectModalCss() {
 
 // Function to show multiple responses modal with Shadow DOM isolation
 function showMultipleResponsesModal(responses, promptName = 'Custom Prompt') {
+    console.log('🤖 AI Beautify Comment - Showing modal with', responses.length, 'responses for prompt:', promptName);
+    
     // Remove any existing modal host
     const existingHost = document.getElementById('lc-modal-host');
     if (existingHost) {
+        console.log('🤖 AI Beautify Comment - Removing existing modal');
         existingHost.remove();
     }
 
@@ -701,6 +704,8 @@ function showMultipleResponsesModal(responses, promptName = 'Custom Prompt') {
         responseCard.setAttribute('role', 'button');
 
         const copyResponse = async () => {
+            console.log('[🤖] AI Beautify Comment - User clicked on response, copying to clipboard. Response length:', response.length);
+            
             try {
                 // Check if this is AI Beautify to replace text in place
                 const isAIBeautify = promptName.includes('AI Text Beautifier') || promptName.includes('Beautify');
@@ -758,6 +763,7 @@ function showMultipleResponsesModal(responses, promptName = 'Custom Prompt') {
                                     targetElement.dispatchEvent(new Event('input', { bubbles: true }));
                                 }
 
+                                console.log('[🤖] AI Beautify Comment - Text successfully replaced in place (AI Beautify)');
                                 showCopiedMessage('Text replaced in place!');
                                 modalHost.remove();
                                 return;
@@ -770,6 +776,7 @@ function showMultipleResponsesModal(responses, promptName = 'Custom Prompt') {
                 
                 // Fallback to clipboard copy (for AI Comment or if replacement fails)
                 await navigator.clipboard.writeText(response.trim());
+                console.log('[🤖] AI Beautify Comment - Response successfully copied to clipboard');
                 showCopiedMessage();
                 modalHost.remove();
             } catch (err) {
@@ -787,6 +794,7 @@ function showMultipleResponsesModal(responses, promptName = 'Custom Prompt') {
                     // TODO: Modern browsers should use navigator.clipboard.writeText() instead
                     document.execCommand('copy');
                     textArea.remove();
+                    console.log('[🤖] AI Beautify Comment - Response copied using fallback method (execCommand)');
                     showCopiedMessage();
                     modalHost.remove();
                 } catch (fallbackErr) {
@@ -1145,17 +1153,21 @@ const activeRequests = new Map();
 
 // Listen for messages from the background script
 chrome.runtime.onMessage.addListener((request, _, sendResponse) => {
+    console.log('🤖 AI Beautify Comment - Message received in content script:', request.action, 'ID:', request.requestId);
+    
     try {
         const notification = initNotificationSystem();
         const requestId = request.requestId || 'default';
         
         if (request.action === 'copyToClipboard') {
+            console.log('🤖 AI Beautify Comment - Copying text to clipboard, length:', request.text?.length);
             copyToClipboard(request.text)
                 .then(() => {
+                    console.log('🤖 AI Beautify Comment - Text copied to clipboard successfully');
                     sendResponse({ success: true });
                 })
                 .catch((error) => {
-                    console.error('Clipboard error:', error);
+                    console.error('🤖 AI Beautify Comment - Clipboard error:', error);
                     sendResponse({ success: false, error: error.message });
                 });
             
@@ -1165,6 +1177,7 @@ chrome.runtime.onMessage.addListener((request, _, sendResponse) => {
         
         // Notification message handlers with request tracking
         if (request.action === 'showLoading') {
+            console.log('🤖 AI Beautify Comment - Showing loading notification for request:', requestId);
             activeRequests.set(requestId, { status: 'loading', timestamp: Date.now() });
             notification.show('Generating Comment', 'AI is creating your professional comment...', 'loading');
             sendResponse({ success: true });
