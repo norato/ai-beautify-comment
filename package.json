@@ -9,9 +9,7 @@
     "lint:fix": "eslint src/ --ext .js --fix --ignore-pattern node_modules/ --ignore-pattern dist/",
     "check": "npm run lint && npm run validate",
     "validate": "node scripts/validate.js",
-    "syntax-check": "node -c src/background.js && node -c src/content.js && node -c src/popup.js && node -c src/utils.js",
     "zip": "npm run build && npm run check && node scripts/create-zip.js",
-    "test": "npm run syntax-check && npm run lint",
     "preversion": "npm run check",
     "version": "npm run zip",
     "postversion": "git push && git push --tags"

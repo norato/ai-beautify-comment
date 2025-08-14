@@ -33,6 +33,12 @@ class GeminiApiClient {
     async _callApi(requestBody) {
         console.log('[🤖] AI Beautify Comment - Making Gemini API call');
         
+        // 🐛 DEBUG: Always log the complete request being sent to Gemini
+        console.log('🤖 AI Beautify Comment - COMPLETE REQUEST TO GEMINI API:');
+        console.log('='.repeat(60));
+        console.log(JSON.stringify(requestBody, null, 2));
+        console.log('='.repeat(60));
+        
         try {
             const response = await fetch(`${GEMINI_API_ENDPOINT}?key=${this.apiKey}`, {
                 method: 'POST',
@@ -48,7 +54,9 @@ class GeminiApiClient {
                 console.error('[🤖] AI Beautify Comment - Gemini API error, status:', response.status);
                 // Attempt to parse API error message from response body
                 const errorData = await response.json().catch(() => ({ message: response.statusText }));
-                throw new Error(`Gemini API error (${response.status}): ${errorData.error?.message || errorData.message || JSON.stringify(errorData)}`);
+                const error = new Error(`Gemini API error (${response.status}): ${errorData.error?.message || errorData.message || JSON.stringify(errorData)}`);
+                error.status = response.status; // Attach status code for retry logic
+                throw error;
             }
 
             const data = await response.json();
@@ -65,6 +73,47 @@ class GeminiApiClient {
             console.error('[🤖] AI Beautify Comment - Error during Gemini API call:', error);
             // Re-throw to allow calling functions to handle specific error types
             throw error;
+        }
+    }
+
+    /**
+     * Wrapper for API calls with retry logic and exponential backoff.
+     * Retries on 503 (Service Unavailable) and 429 (Too Many Requests) errors.
+     * @param {Function} apiCallFn - Function that makes the API call
+     * @param {number} maxRetries - Maximum number of retry attempts (default: 5)
+     * @param {number} baseDelayMs - Base delay in milliseconds (default: 1000)
+     * @returns {Promise<object>} The API response
+     * @throws {Error} If all retry attempts fail
+     */
+    async _callApiWithRetry(apiCallFn, maxRetries = 5, baseDelayMs = 1000) {
+        let retries = 0;
+        
+        while (retries < maxRetries) {
+            try {
+                return await apiCallFn();
+            } catch (error) {
+                // Check if error has status code and it's retryable (503 or 429)
+                if (error.status && (error.status === 503 || error.status === 429)) {
+                    if (retries >= maxRetries - 1) {
+                        // Last retry failed, throw a user-friendly error
+                        const userError = new Error('AI model is currently overloaded. Please try again in a few minutes.');
+                        userError.status = error.status;
+                        userError.originalError = error;
+                        throw userError;
+                    }
+                    
+                    // Calculate delay with exponential backoff + jitter
+                    const delay = baseDelayMs * Math.pow(2, retries) + Math.random() * 300;
+                    console.warn(`[🤖] AI Beautify Comment - API call failed with status ${error.status}. Retrying in ${delay.toFixed(0)}ms... (Attempt ${retries + 1}/${maxRetries})`);
+                    
+                    // Wait before retrying
+                    await new Promise(resolve => setTimeout(resolve, delay));
+                    retries++;
+                } else {
+                    // Non-retryable error, throw immediately
+                    throw error;
+                }
+            }
         }
     }
 
@@ -87,7 +136,8 @@ class GeminiApiClient {
             safetySettings: safetySettings
         };
         
-        return this._callApi(requestBody);
+        // Use retry wrapper for API calls
+        return this._callApiWithRetry(() => this._callApi(requestBody));
     }
 
     /**

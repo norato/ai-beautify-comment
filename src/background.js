@@ -1,16 +1,17 @@
 // Service Worker for AI Beautify Comment
 
-// Load utilities, API service and context menu service
+// Load utilities, API service, context menu service and prompt templates
 try {
   importScripts('utils.js');
-  importScripts('gemini-api.js');
+  importScripts('gemini/gemini-api.js');
   importScripts('contextmenu-service.js');
+  importScripts('gemini/prompt-templates.js');
 } catch (error) {
   console.error('Failed to load scripts:', error);
 }
 
 // TypeScript declarations for imported functions (loaded via importScripts)
-/* global getEnabledPrompts, getSettings, addPrompt, updatePrompt, deletePrompt, updateSettings, migrateStorage, ErrorTypes, ErrorMessages, parseGeminiError, GeminiApiClient, ContextMenuService */
+/* global getEnabledPrompts, getSettings, addPrompt, updatePrompt, deletePrompt, updateSettings, migrateStorage, ErrorTypes, ErrorMessages, parseGeminiError, GeminiApiClient, ContextMenuService, PromptTemplates */
 
 // Initialize Context Menu Service
 const contextMenuService = new ContextMenuService(getEnabledPrompts);
@@ -136,12 +137,8 @@ async function handleTextBeautification(selectedText, tab, requestId = null) {
       console.warn('Could not update loading notification:', e);
     }
     
-    // Create a pseudo custom prompt for beautify behavior to reuse existing multi-response logic
-    const beautifyPrompt = {
-      name: 'AI Text Beautifier',
-      promptText: 'Improve and enhance the following text to make it more professional, clear, and engaging. Maintain the original meaning while improving grammar, style, and flow. IMPORTANT: Respond in the same language as the input text.',
-      responseCount: defaultBeautifyResponseCount
-    };
+    // Use centralized beautify prompt template
+    const beautifyPrompt = PromptTemplates.getBeautifyPrompt(defaultBeautifyResponseCount);
     
     // Generate multiple beautified versions using the same logic as custom prompts
     console.log('🤖 AI Beautify Comment - Calling API for text beautification');
@@ -445,12 +442,8 @@ async function handleCommentGeneration(selectedText, tab, requestId = null) {
       console.warn('Could not update loading notification:', e);
     }
     
-    // Create a pseudo custom prompt for default behavior to reuse existing multi-response logic
-    const defaultPrompt = {
-      name: 'Default Professional Comment',
-      promptText: 'Generate thoughtful, professional comments that add meaningful insights or perspectives to the discussion. Ask thoughtful questions when appropriate and share relevant experiences when fitting. Respond in the same language as the input text.',
-      responseCount: defaultResponseCount
-    };
+    // Use centralized default comment prompt template
+    const defaultPrompt = PromptTemplates.getDefaultCommentPrompt(defaultResponseCount);
     
     // Generate multiple comments using the same logic as custom prompts
     const responses = await generateMultipleComments(selectedText, apiKey, defaultPrompt);
@@ -626,45 +619,14 @@ async function generateMultipleCommentsWithJSON(selectedText, apiKey, customProm
   // Create Gemini API client
   const geminiClient = new GeminiApiClient(apiKey);
   
-  // Construct JSON prompt with custom text
-  const jsonPrompt = `You are a thoughtful professional. Generate ${numResponses} unique comment suggestions for the following content.
+  // Use centralized custom JSON prompt template
+  const jsonPrompt = PromptTemplates.generateCustomJsonPrompt(numResponses, customPrompt.promptText, selectedText);
 
-STRICT FORMATTING RULES:
-- Respond ONLY with a valid JSON object
-- The JSON object must have a single key called "sugestoes"
-- The value of "sugestoes" must be an array of ${numResponses} strings
-- Each string must be a unique, professional comment
-- Do not include any explanation, markdown, or additional text
-- Do not wrap in \`\`\`json blocks
-
-CONTENT GUIDELINES:
-${customPrompt.promptText}
-
-RESPONSE GUIDELINES:
-- Keep responses concise (2-3 sentences maximum)
-- Be specific, add value, and keep it authentic
-- Make each suggestion unique and different from the others
-- Maintain a professional yet personable tone
-
-CONTENT: "${selectedText}"
-
-Example format for ${numResponses} responses:
-{
-  "sugestoes": [
-    "First unique comment here",
-    "Second unique comment here"${numResponses > 2 ? ',\n    "Third unique comment here"' : ''}${numResponses > 3 ? ',\n    "Fourth unique comment here"' : ''}${numResponses > 4 ? ',\n    "Fifth unique comment here"' : ''}
-  ]
-}`;
-
-  // 🐛 DEBUG: Log the complete prompt being sent to Gemini
-  console.log('🤖 AI Beautify Comment - COMPLETE PROMPT BEING SENT TO GEMINI:');
-  console.log('='.repeat(60));
-  console.log(jsonPrompt);
-  console.log('='.repeat(60));
-  console.log('🤖 AI Beautify Comment - Selected text:', selectedText);
-  console.log('🤖 AI Beautify Comment - Custom prompt name:', customPrompt.name);
-  console.log('🤖 AI Beautify Comment - Custom prompt text:', customPrompt.promptText);
-  console.log('='.repeat(60));
+  // 🐛 DEBUG: Additional context for this specific request
+  console.log('🤖 AI Beautify Comment - Custom prompt context:');
+  console.log('- Selected text:', selectedText);
+  console.log('- Custom prompt name:', customPrompt.name);
+  console.log('- Custom prompt text:', customPrompt.promptText);
 
   try {
     // Use the new API client
@@ -711,37 +673,45 @@ Example format for ${numResponses} responses:
 // Legacy function: Generate multiple comments using multiple API calls (fallback)
 async function generateMultipleCommentsLegacy(selectedText, apiKey, customPrompt) {
   const numResponses = customPrompt.responseCount;
-  const promises = [];
+  const successfulResponses = [];
+  const THROTTLE_DELAY_MS = 500; // Delay between sequential requests
   
-  console.log(`Falling back to ${numResponses} separate API calls`);
+  console.log(`[🤖] AI Beautify Comment - Falling back to ${numResponses} separate API calls (sequential with throttling)`);
   
-  // Create promises for parallel API calls
+  // Make sequential API calls with throttling
   for (let i = 0; i < numResponses; i++) {
-    promises.push(generateCommentWithCustomPrompt(selectedText, apiKey, customPrompt));
+    try {
+      console.log(`[🤖] AI Beautify Comment - Making API call ${i + 1}/${numResponses}`);
+      const response = await generateCommentWithCustomPrompt(selectedText, apiKey, customPrompt);
+      successfulResponses.push(response);
+      
+      // Add throttling delay between requests (except after the last one)
+      if (i < numResponses - 1) {
+        console.log(`[🤖] AI Beautify Comment - Throttling: waiting ${THROTTLE_DELAY_MS}ms before next request`);
+        await new Promise(resolve => setTimeout(resolve, THROTTLE_DELAY_MS));
+      }
+    } catch (error) {
+      console.error(`[🤖] AI Beautify Comment - API call ${i + 1}/${numResponses} failed:`, error);
+      
+      // If this is a 503/429 error that exhausted retries, we might want to stop trying
+      if (error.status === 503 || error.status === 429) {
+        console.warn('[🤖] AI Beautify Comment - API is overloaded, stopping further attempts');
+        break;
+      }
+      // For other errors, continue trying with remaining requests
+    }
   }
   
-  try {
-    // Wait for all responses or handle partial failures
-    const results = await Promise.allSettled(promises);
-    const successfulResponses = results
-      .filter(result => result.status === 'fulfilled')
-      .map(result => result.value);
-    
-    if (successfulResponses.length === 0) {
-      throw new Error('Failed to generate any responses');
-    }
-    
-    // If we got some but not all responses, log the failures
-    const failedCount = results.length - successfulResponses.length;
-    if (failedCount > 0) {
-      console.warn(`${failedCount} out of ${numResponses} API calls failed`);
-    }
-    
-    return successfulResponses;
-  } catch (error) {
-    console.error('Error generating multiple comments with legacy approach:', error);
-    throw error;
+  if (successfulResponses.length === 0) {
+    throw new Error('Failed to generate any responses. The AI model may be overloaded.');
   }
+  
+  // Log if we got partial results
+  if (successfulResponses.length < numResponses) {
+    console.warn(`[🤖] AI Beautify Comment - Generated ${successfulResponses.length} out of ${numResponses} requested responses`);
+  }
+  
+  return successfulResponses;
 }
 
 // Function to call Gemini API with custom prompt
