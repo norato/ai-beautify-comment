@@ -702,6 +702,73 @@ function showMultipleResponsesModal(responses, promptName = 'Custom Prompt') {
 
         const copyResponse = async () => {
             try {
+                // Check if this is AI Beautify to replace text in place
+                const isAIBeautify = promptName.includes('AI Text Beautifier') || promptName.includes('Beautify');
+                
+                if (isAIBeautify) {
+                    // Try to replace text in place first
+                    const selection = window.getSelection();
+                    if (selection && selection.rangeCount > 0) {
+                        const range = selection.getRangeAt(0);
+                        let targetElement = range.commonAncestorContainer;
+                        
+                        // Find the parent element if we're in a text node
+                        while (targetElement && targetElement.nodeType !== Node.ELEMENT_NODE) {
+                            targetElement = targetElement.parentNode;
+                        }
+
+                        // Check if the element is editable
+                        const isEditable = targetElement && (
+                            (targetElement.tagName === 'INPUT' && 
+                             !['button', 'checkbox', 'radio', 'submit', 'reset', 'file', 'image'].includes(targetElement.type)) ||
+                            targetElement.tagName === 'TEXTAREA' ||
+                            targetElement.isContentEditable ||
+                            targetElement.getAttribute('contenteditable') === 'true'
+                        );
+
+                        if (isEditable) {
+                            try {
+                                if (targetElement.tagName === 'INPUT' || targetElement.tagName === 'TEXTAREA') {
+                                    // Handle input and textarea elements
+                                    const start = targetElement.selectionStart;
+                                    const end = targetElement.selectionEnd;
+                                    const newValue = targetElement.value.substring(0, start) + response.trim() + targetElement.value.substring(end);
+                                    targetElement.value = newValue;
+
+                                    // Restore cursor position
+                                    targetElement.setSelectionRange(start + response.trim().length, start + response.trim().length);
+
+                                    // Dispatch events for frameworks
+                                    targetElement.dispatchEvent(new Event('input', { bubbles: true }));
+                                    targetElement.dispatchEvent(new Event('change', { bubbles: true }));
+
+                                } else if (targetElement.isContentEditable || targetElement.getAttribute('contenteditable') === 'true') {
+                                    // Handle contenteditable elements
+                                    range.deleteContents();
+                                    const textNode = document.createTextNode(response.trim());
+                                    range.insertNode(textNode);
+
+                                    // Restore selection
+                                    selection.removeAllRanges();
+                                    range.setStartAfter(textNode);
+                                    range.setEndAfter(textNode);
+                                    selection.addRange(range);
+
+                                    // Dispatch event for contenteditable
+                                    targetElement.dispatchEvent(new Event('input', { bubbles: true }));
+                                }
+
+                                showCopiedMessage('Text replaced in place!');
+                                modalHost.remove();
+                                return;
+                            } catch (replaceError) {
+                                console.warn('Failed to replace text in place, falling back to clipboard:', replaceError);
+                            }
+                        }
+                    }
+                }
+                
+                // Fallback to clipboard copy (for AI Comment or if replacement fails)
                 await navigator.clipboard.writeText(response.trim());
                 showCopiedMessage();
                 modalHost.remove();

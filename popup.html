@@ -110,8 +110,14 @@
                 and save it above
               </li>
               <li>Go to any website (social media, blogs, forums, etc.)</li>
-              <li>Select the post text</li>
-              <li>Right-click and choose a prompt option</li>
+              <li>Select text you want to comment on or improve</li>
+              <li>Right-click and choose:
+                <ul>
+                  <li><strong>AI Beautify (improve yours)</strong> - Enhance your own writing</li>
+                  <li><strong>AI Comment (default)</strong> - Generate professional comments about content</li>
+                  <li>Or any custom prompt you've created</li>
+                </ul>
+              </li>
               <li>Choose from the generated responses</li>
             </ol>
           </div>
@@ -251,7 +257,7 @@
             <div class="form-group">
               <div>
                 <label for="defaultResponseCount"
-                  >Default Number of Responses:</label
+                  >AI Comment - Number of Responses:</label
                 >
                 <input
                   type="number"
@@ -269,13 +275,34 @@
               </div>
               <div>
                 <small class="help-text"
-                  >This setting applies only to the default "Generate Professional
-                  Comment" option. Custom prompts have their own response count
-                  settings.<br />
-                  <strong>Note:</strong> When set to 1 response, the comment
-                  will be automatically copied to clipboard. When set to 2+
-                  responses, you'll see a modal to choose from multiple
-                  options.</small
+                  >This setting applies to the default "AI Comment" option. Custom prompts have their own response count settings.</small
+                >
+              </div>
+            </div>
+            
+            <div class="form-group">
+              <div>
+                <label for="defaultBeautifyResponseCount"
+                  >AI Beautify - Number of Responses:</label
+                >
+                <input
+                  type="number"
+                  id="defaultBeautifyResponseCount"
+                  min="1"
+                  max="5"
+                  value="3"
+                />
+                <button
+                  id="saveBeautifyBtn"
+                  class="save-btn small"
+                >
+                  Save
+                </button>
+              </div>
+              <div>
+                <small class="help-text"
+                  >This setting applies to the "AI Beautify" option that improves your selected text.<br />
+                  <strong>Note:</strong> When set to 1 response, the text will be automatically replaced in place (or copied to clipboard if not possible). When set to 2+ responses, you'll see a modal to choose from multiple options.</small
                 >
               </div>
             </div>

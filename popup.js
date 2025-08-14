@@ -31,6 +31,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     const cancelPromptBtn = document.getElementById('cancelPromptBtn');
     const defaultResponseCountInput = document.getElementById('defaultResponseCount');
     const saveDefaultBtn = document.getElementById('saveDefaultBtn');
+    const defaultBeautifyResponseCountInput = document.getElementById('defaultBeautifyResponseCount');
+    const saveBeautifyBtn = document.getElementById('saveBeautifyBtn');
     const promptLimitMessage = document.querySelector('.prompt-limit-message');
     const noPromptsMessage = document.querySelector('.no-prompts-message');
     
@@ -68,6 +70,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             
             // Load default response count
             defaultResponseCountInput.value = settings.defaultResponseCount || 3;
+            defaultBeautifyResponseCountInput.value = settings.defaultBeautifyResponseCount || 3;
             
             // Render custom prompts
             renderCustomPrompts(currentPrompts);
@@ -339,6 +342,39 @@ document.addEventListener('DOMContentLoaded', async () => {
         } catch (error) {
             console.error('Error saving default count:', error);
             alert('Error saving default response count: ' + error.message);
+        }
+    });
+
+    // Save beautify response count
+    saveBeautifyBtn.addEventListener('click', async () => {
+        const count = parseInt(defaultBeautifyResponseCountInput.value);
+        
+        if (isNaN(count) || count < 1 || count > 5) {
+            alert('AI Beautify response count must be between 1 and 5.');
+            return;
+        }
+        
+        try {
+            chrome.runtime.sendMessage({ 
+                action: 'updateSettings',
+                data: { defaultBeautifyResponseCount: count }
+            }, (response) => {
+                if (response && response.success) {
+                    // Show temporary success message
+                    const originalText = saveBeautifyBtn.textContent;
+                    saveBeautifyBtn.textContent = 'Saved!';
+                    saveBeautifyBtn.disabled = true;
+                    setTimeout(() => {
+                        saveBeautifyBtn.textContent = originalText;
+                        saveBeautifyBtn.disabled = false;
+                    }, 2000);
+                } else {
+                    alert('Error saving AI Beautify response count.');
+                }
+            });
+        } catch (error) {
+            console.error('Error saving beautify count:', error);
+            alert('Error saving AI Beautify response count: ' + error.message);
         }
     });
     

@@ -177,7 +177,8 @@ async function getSettings() {
             return {
                 apiKey: result.apiKey || '',
                 customPrompts: result.customPrompts || [],
-                defaultResponseCount: result.defaultResponseCount || 3
+                defaultResponseCount: result.defaultResponseCount || 3,
+                defaultBeautifyResponseCount: result.defaultBeautifyResponseCount || 3
             };
         }
         
@@ -185,14 +186,16 @@ async function getSettings() {
         return {
             apiKey: result.apiKey || '',
             customPrompts: [],
-            defaultResponseCount: 3
+            defaultResponseCount: 3,
+            defaultBeautifyResponseCount: 3
         };
     } catch (error) {
         console.error('Error getting settings:', error);
         return {
             apiKey: '',
             customPrompts: [],
-            defaultResponseCount: 3
+            defaultResponseCount: 3,
+            defaultBeautifyResponseCount: 3
         };
     }
 }
@@ -300,7 +303,8 @@ async function migrateStorage() {
             const migratedSettings = {
                 apiKey: result.apiKey,
                 customPrompts: [],
-                defaultResponseCount: 3
+                defaultResponseCount: 3,
+                defaultBeautifyResponseCount: 3
             };
             
             await saveSettings(migratedSettings);
@@ -313,7 +317,8 @@ async function migrateStorage() {
             const defaultSettings = {
                 apiKey: '',
                 customPrompts: [],
-                defaultResponseCount: 3
+                defaultResponseCount: 3,
+                defaultBeautifyResponseCount: 3
             };
             
             await saveSettings(defaultSettings);
