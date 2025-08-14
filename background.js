@@ -25,7 +25,7 @@ chrome.runtime.onInstalled.addListener(async (details) => {
   
   chrome.action.setIcon({
     path: {
-      "128": "icon.png"
+      '128': 'icon.png'
     }
   });
 });
@@ -42,10 +42,10 @@ async function createContextMenu() {
       try {
         // 1. AI Beautify (improve your own text) - positioned first
         chrome.contextMenus.create({
-          id: "beautifyText",
-          title: "AI Beautify (improve yours)",
-          contexts: ["selection"],
-          documentUrlPatterns: ["*://*/*"]
+          id: 'beautifyText',
+          title: 'AI Beautify (improve yours)',
+          contexts: ['selection'],
+          documentUrlPatterns: ['*://*/*']
         }, () => {
           if (chrome.runtime.lastError) {
             console.error('Error creating AI Beautify menu:', chrome.runtime.lastError);
@@ -54,10 +54,10 @@ async function createContextMenu() {
         
         // 2. Visual separator
         chrome.contextMenus.create({
-          id: "separator1",
-          type: "separator",
-          contexts: ["selection"],
-          documentUrlPatterns: ["*://*/*"]
+          id: 'separator1',
+          type: 'separator',
+          contexts: ['selection'],
+          documentUrlPatterns: ['*://*/*']
         }, () => {
           if (chrome.runtime.lastError) {
             console.error('Error creating separator:', chrome.runtime.lastError);
@@ -66,10 +66,10 @@ async function createContextMenu() {
 
         // 3. AI Comment (generate comments from content)
         chrome.contextMenus.create({
-          id: "generateProfessionalComment",
-          title: "AI Comment (default)",
-          contexts: ["selection"],
-          documentUrlPatterns: ["*://*/*"]
+          id: 'generateProfessionalComment',
+          title: 'AI Comment (default)',
+          contexts: ['selection'],
+          documentUrlPatterns: ['*://*/*']
         }, () => {
           if (chrome.runtime.lastError) {
             console.error('Error creating AI Comment menu:', chrome.runtime.lastError);
@@ -83,8 +83,8 @@ async function createContextMenu() {
             chrome.contextMenus.create({
               id: `custom-prompt-${prompt.id}`,
               title: prompt.name,
-              contexts: ["selection"],
-              documentUrlPatterns: ["*://*/*"]
+              contexts: ['selection'],
+              documentUrlPatterns: ['*://*/*']
             }, () => {
               if (chrome.runtime.lastError) {
                 console.error(`Error creating custom prompt menu ${prompt.name}:`, chrome.runtime.lastError);
@@ -134,15 +134,15 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
     }
   }
   
-  if (info.menuItemId === "generateProfessionalComment") {
+  if (info.menuItemId === 'generateProfessionalComment') {
     // Default comment generation
     handleCommentGeneration(info.selectionText, tab, requestId);
-  } else if (info.menuItemId === "beautifyText") {
+  } else if (info.menuItemId === 'beautifyText') {
     // AI Beautify text improvement
     handleTextBeautification(info.selectionText, tab, requestId);
-  } else if (info.menuItemId.startsWith("custom-prompt-")) {
+  } else if (info.menuItemId.startsWith('custom-prompt-')) {
     // Custom prompt
-    const promptId = info.menuItemId.replace("custom-prompt-", "");
+    const promptId = info.menuItemId.replace('custom-prompt-', '');
     handleCustomPromptGeneration(info.selectionText, tab, promptId, requestId);
   }
 });
@@ -1031,7 +1031,7 @@ async function checkForUpdates() {
   try {
     const response = await fetch(GITHUB_VERSION_URL, { cache: 'no-cache' });
     if (!response.ok) {
-      console.warn("Update check failed: Network response was not ok.");
+      console.warn('Update check failed: Network response was not ok.');
       return;
     }
 
@@ -1049,7 +1049,7 @@ async function checkForUpdates() {
       chrome.storage.local.remove('updateInfo');
     }
   } catch (error) {
-    console.warn("Update check failed:", error);
+    console.warn('Update check failed:', error);
   }
 }
 
@@ -1195,7 +1195,7 @@ function hideLoadingIndicator() {
 function replaceSelectedTextInPlace(improvedText) {
   const selection = window.getSelection();
   if (!selection || selection.rangeCount === 0) {
-    console.warn("No text selected for replacement. Copying to clipboard instead.");
+    console.warn('No text selected for replacement. Copying to clipboard instead.');
     navigator.clipboard.writeText(improvedText);
     return { success: false, reason: 'no_selection', method: 'clipboard' };
   }
@@ -1259,14 +1259,14 @@ function replaceSelectedTextInPlace(improvedText) {
       return { success: true, method: 'replace_in_place' };
 
     } catch (e) {
-      console.error("Error replacing text:", e);
+      console.error('Error replacing text:', e);
       // Fallback to clipboard if replacement fails
       navigator.clipboard.writeText(improvedText);
       return { success: false, reason: 'replacement_error', method: 'clipboard', error: e.message };
     }
   } else {
     // If element is not editable, copy to clipboard
-    console.log("Selection is not in an editable element. Copying to clipboard instead.");
+    console.log('Selection is not in an editable element. Copying to clipboard instead.');
     navigator.clipboard.writeText(improvedText);
     return { success: false, reason: 'not_editable', method: 'clipboard' };
   }

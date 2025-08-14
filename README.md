@@ -4,6 +4,10 @@ A Chrome extension that enhances and generates professional comments on any webs
 
 ## 📸 Screenshots
 
+### New Context Menu v3.0.0 - Enhanced Hierarchy
+![Context Menu](images/context-menu.png)
+*Featuring AI Beautify (improve yours) at the top, visual separator, and AI Comment (default) for better organization*
+
 ### API Key Configuration
 ![API Key Setup](images/api-key.png)
 
@@ -36,20 +40,31 @@ A Chrome extension that enhances and generates professional comments on any webs
 - 🚀 **Fast and responsive with retry logic**
 - ⏱️ **Intelligent timeout handling**
 
-## 🆕 What's New in v2.2.0
+## 🆕 What's New in v3.0.0 - Major Update!
 
-### Enhanced User Experience
-- **🛡️ Robust Error Handling** - Added 10-second API timeout with specific error messages for network failures, timeouts, and invalid keys
-- **📱 Improved Form Layout** - Reorganized form groups into clean column layouts with help text positioned below input fields
-- **🎯 Fixed Button Positioning** - Resolved UI issues where buttons appeared outside containers by implementing proper flexbox layouts
-- **💬 Better Visual Feedback** - Added loading states with spinner animations and detailed validation messages
-- **✨ Consistent UI Alignment** - All interface elements now stay within proper container boundaries
+### 🚀 New AI Beautify Feature
+- **✨ AI Beautify (improve yours)** - New functionality to enhance and improve your own text with intelligent formatting
+- **🎯 In-place text replacement** - Automatically replaces selected text in editable fields (input, textarea, contenteditable)
+- **📋 Smart fallback system** - Copies to clipboard when in-place replacement isn't possible
+- **⚙️ Separate response settings** - Independent configuration for AI Comment and AI Beautify response counts
 
-### Technical Improvements
-- Replaced `position: absolute` with flexbox for better responsive design
-- Added `Promise.race` for timeout handling in API requests
-- Enhanced CSS specificity to prevent style conflicts
-- Improved accessibility with better focus management
+### 🔄 Revolutionary Language Detection
+- **🧠 Native Gemini capability** - Removed manual JavaScript language detection in favor of Gemini's superior AI-powered detection
+- **🌍 More accurate responses** - Uses "Respond in the same language as the input text" instruction for better multilingual support
+- **⚡ Performance boost** - Eliminated 60+ lines of detection code for cleaner, faster execution
+- **🎯 Better reliability** - No more regex-based detection failures
+
+### 🎨 Enhanced User Experience
+- **📱 Reorganized menu** - AI Beautify positioned first, visual separator, then AI Comment for better hierarchy
+- **🔄 Clearer naming** - Renamed "AI Beautify Comment" to "AI Comment" for better understanding
+- **📖 Updated instructions** - Clear explanation of AI Beautify vs AI Comment functionality
+- **⚙️ Dual settings** - Separate response count configuration for each feature
+
+### 🔧 Development & Quality Improvements
+- **📦 Package.json with scripts** - Added npm scripts for linting, validation, and automated checks
+- **✅ ESLint integration** - Automated code quality and style checking
+- **🔍 Validation scripts** - Comprehensive extension validation before release
+- **📊 Build automation** - Automated ZIP creation and release preparation
 
 ## 📦 Distribution
 
@@ -103,13 +118,15 @@ The extension includes an automatic update checker:
 
 ### How to Use
 1. **Go to any website** (social media, blogs, forums, etc.)
-2. **Select the text** you want to comment on or respond to
-3. **Right-click** and choose from available prompts:
-   - **"Generate Professional Comment"** (default prompt)
+2. **Select the text** you want to work with
+3. **Right-click** and choose from available options:
+   - **"AI Beautify (improve yours)"** - Enhance your own writing with in-place replacement
+   - **"AI Comment (default)"** - Generate professional comments about content
    - Your custom prompts (if created)
-4. **Results depend on response count**:
-   - **1 response**: Automatically copied to clipboard
-   - **2+ responses**: Modal opens for you to choose the best option
+4. **Results depend on feature and response count**:
+   - **AI Beautify**: Text is improved and replaced in place (or copied to clipboard)
+   - **AI Comment with 1 response**: Automatically copied to clipboard
+   - **AI Comment with 2+ responses**: Modal opens for you to choose the best option
 
 ### Supported Languages
 - English, Portuguese, Spanish, French
@@ -130,6 +147,41 @@ The extension includes an automatic update checker:
 **AI-Generated Content:** Always review and edit AI-generated comments before posting. The tool is designed to assist, not replace, human judgment.
 
 ## 🔄 Development
+
+### Prerequisites
+- Node.js (version 16.x or higher)
+- npm or yarn
+
+### Getting Started
+```bash
+# Clone the repository
+git clone https://github.com/norato/ai-beautify-comment.git
+cd ai-beautify-comment
+
+# Install dependencies
+npm install
+
+# Run validation checks
+npm run check
+
+# Create distribution ZIP
+npm run zip
+```
+
+### Development Scripts
+- **`npm run lint`** - Run ESLint to check code quality and style
+- **`npm run lint:fix`** - Automatically fix linting issues where possible
+- **`npm run validate`** - Comprehensive extension validation (files, manifest, versions)
+- **`npm run syntax-check`** - Basic JavaScript syntax verification
+- **`npm run check`** - Run all validations (lint + validate)
+- **`npm run zip`** - Create distribution ZIP after validation
+- **`npm test`** - Run syntax check and linting
+
+### Quality Assurance
+Before any commit or release:
+1. **`npm run check`** - Ensures code quality and extension integrity
+2. **Manual testing** - Load extension in Chrome and test both AI Beautify and AI Comment
+3. **Multi-language testing** - Test with different languages to verify Gemini detection
 
 ### File Structure
 ```
