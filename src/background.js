@@ -34,7 +34,7 @@ chrome.runtime.onInstalled.addListener(async (details) => {
   
   chrome.action.setIcon({
     path: {
-      '128': 'icon.png'
+      '128': 'assets/icon.png'
     }
   });
 });
@@ -67,7 +67,7 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
     await chrome.scripting.executeScript({
       target: { tabId: tab.id },
       function: showLoadingIndicator,
-      args: [chrome.runtime.getURL('icon.png')]
+      args: [chrome.runtime.getURL('assets/icon.png')]
     });
   } catch (e) {
     console.warn('🤖 AI Beautify Comment - Could not show visual loading indicator:', e);
@@ -580,7 +580,7 @@ async function showFallbackNotification(title, message) {
   try {
     chrome.notifications.create({
       type: 'basic',
-      iconUrl: 'icon.png',
+      iconUrl: 'assets/icon.png',
       title: title,
       message: message
     });

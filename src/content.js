@@ -26,7 +26,7 @@ class UniversalNotification {
         this.notification.setAttribute('tabindex', '-1');
         this.notification.innerHTML = `
             <div class="gpt-notification-header">
-                <img src="${chrome.runtime.getURL('icon.png')}" alt="AI Beautify Comment" class="ai-notification-icon">
+                <img src="${chrome.runtime.getURL('assets/icon.png')}" alt="AI Beautify Comment" class="ai-notification-icon">
                 <button class="gpt-notification-close" aria-label="Close notification" style="display: none;" tabindex="0">&times;</button>
             </div>
             <div class="gpt-notification-content">
