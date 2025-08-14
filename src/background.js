@@ -1,14 +1,15 @@
 // Service Worker for AI Beautify Comment
 
-// Load utilities
+// Load utilities and API service
 try {
   importScripts('utils.js');
+  importScripts('gemini-api.js');
 } catch (error) {
-  console.error('Failed to load utils.js:', error);
+  console.error('Failed to load scripts:', error);
 }
 
-// TypeScript declarations for utils functions (imported via importScripts)
-/* global getEnabledPrompts, getSettings, addPrompt, updatePrompt, deletePrompt, updateSettings, migrateStorage, ErrorTypes, ErrorMessages, parseGeminiError */
+// TypeScript declarations for imported functions (loaded via importScripts)
+/* global getEnabledPrompts, getSettings, addPrompt, updatePrompt, deletePrompt, updateSettings, migrateStorage, ErrorTypes, ErrorMessages, parseGeminiError, GeminiApiClient */
 
 // Extension lifecycle handlers
 chrome.runtime.onInstalled.addListener(async (details) => {
@@ -683,6 +684,9 @@ async function generateMultipleComments(selectedText, apiKey, customPrompt) {
 async function generateMultipleCommentsWithJSON(selectedText, apiKey, customPrompt, numResponses) {
   console.log('🤖 AI Beautify Comment - Building JSON prompt for', numResponses, 'responses');
   
+  // Create Gemini API client
+  const geminiClient = new GeminiApiClient(apiKey);
+  
   // Construct JSON prompt with custom text
   const jsonPrompt = `You are a thoughtful professional. Generate ${numResponses} unique comment suggestions for the following content.
 
@@ -714,78 +718,25 @@ Example format for ${numResponses} responses:
 }`;
 
   try {
-    console.log('🤖 AI Beautify Comment - Making API call to Gemini');
-    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        contents: [{
-          parts: [{
-            text: jsonPrompt
-          }]
-        }],
-        generationConfig: {
-          temperature: 0.8,
-          topK: 40,
-          topP: 0.9,
-          maxOutputTokens: 500, // Increased for multiple responses
-        },
-        safetySettings: [
-          {
-            category: 'HARM_CATEGORY_HARASSMENT',
-            threshold: 'BLOCK_MEDIUM_AND_ABOVE'
-          },
-          {
-            category: 'HARM_CATEGORY_HATE_SPEECH',
-            threshold: 'BLOCK_MEDIUM_AND_ABOVE'
-          },
-          {
-            category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT',
-            threshold: 'BLOCK_MEDIUM_AND_ABOVE'
-          },
-          {
-            category: 'HARM_CATEGORY_DANGEROUS_CONTENT',
-            threshold: 'BLOCK_MEDIUM_AND_ABOVE'
-          }
-        ]
-      })
-    });
+    // Use the new API client
+    const contents = [{ parts: [{ text: jsonPrompt }] }];
+    const generationConfig = {
+      temperature: 0.8,
+      topK: 40,
+      topP: 0.9,
+      maxOutputTokens: 500, // Increased for multiple responses
+    };
+    const safetySettings = GeminiApiClient.getDefaultSafetySettings();
 
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      const error = parseGeminiError({
-        response: {
-          status: response.status,
-          data: errorData,
-          headers: response.headers
-        }
-      });
-      throw error;
-    }
-
-    const data = await response.json();
+    const response = await geminiClient.generateContent(contents, generationConfig, safetySettings);
     
-    if (data.candidates && data.candidates[0] && data.candidates[0].content && data.candidates[0].content.parts[0]) {
-      const responseText = data.candidates[0].content.parts[0].text.trim();
-      
-      try {
-        // Parse JSON response
-        const jsonResponse = JSON.parse(responseText);
-        
-        if (jsonResponse && Array.isArray(jsonResponse.sugestoes) && jsonResponse.sugestoes.length > 0) {
-          return jsonResponse.sugestoes.slice(0, numResponses); // Ensure we don't exceed requested count
-        } else {
-          throw new Error('Invalid JSON format: missing or empty sugestoes array');
-        }
-      } catch (parseError) {
-        console.error('JSON parsing failed:', parseError, 'Raw response:', responseText);
-        throw new Error(`Failed to parse JSON response: ${parseError.message}`);
-      }
+    // Parse JSON response using the new client method
+    const jsonResponse = geminiClient.parseJsonResponse(response);
+    
+    if (jsonResponse && Array.isArray(jsonResponse.sugestoes) && jsonResponse.sugestoes.length > 0) {
+      return jsonResponse.sugestoes.slice(0, numResponses); // Ensure we don't exceed requested count
     } else {
-      console.error('Unexpected Gemini response format:', data);
-      throw new Error('Unexpected response format from Gemini API');
+      throw new Error('Invalid JSON format: missing or empty sugestoes array');
     }
     
   } catch (error) {
@@ -832,6 +783,11 @@ async function generateMultipleCommentsLegacy(selectedText, apiKey, customPrompt
 
 // Function to call Gemini API with custom prompt
 async function generateCommentWithCustomPrompt(selectedText, apiKey, customPrompt) {
+  console.log('[🤖] AI Beautify Comment - Generating comment with custom prompt using API client');
+  
+  // Create Gemini API client
+  const geminiClient = new GeminiApiClient(apiKey);
+  
   // Construct prompt with custom text
   const fullPrompt = `${customPrompt.promptText}
 
@@ -844,66 +800,41 @@ Post content: "${selectedText}"
 Generate only the comment text, without any additional explanation or formatting.`;
 
   try {
-    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
+    const contents = [{ parts: [{ text: fullPrompt }] }];
+    const generationConfig = {
+      temperature: 0.8,
+      topK: 40,
+      topP: 0.9,
+      maxOutputTokens: 150,
+    };
+    const safetySettings = [
+      {
+        category: 'HARM_CATEGORY_HARASSMENT',
+        threshold: 'BLOCK_MEDIUM_AND_ABOVE'
       },
-      body: JSON.stringify({
-        contents: [{
-          parts: [{
-            text: fullPrompt
-          }]
-        }],
-        generationConfig: {
-          temperature: 0.8,
-          topK: 40,
-          topP: 0.9,
-          maxOutputTokens: 150,
-        },
-        safetySettings: [
-          {
-            category: 'HARM_CATEGORY_HARASSMENT',
-            threshold: 'BLOCK_MEDIUM_AND_ABOVE'
-          },
-          {
-            category: 'HARM_CATEGORY_HATE_SPEECH',
-            threshold: 'BLOCK_MEDIUM_AND_ABOVE'
-          },
-          {
-            category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT',
-            threshold: 'BLOCK_MEDIUM_AND_ABOVE'
-          },
-          {
-            category: 'HARM_CATEGORY_DANGEROUS_CONTENT',
-            threshold: 'BLOCK_MEDIUM_AND_ABOVE'
-          }
-        ]
-      })
-    });
+      {
+        category: 'HARM_CATEGORY_HATE_SPEECH',
+        threshold: 'BLOCK_MEDIUM_AND_ABOVE'
+      },
+      {
+        category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT',
+        threshold: 'BLOCK_MEDIUM_AND_ABOVE'
+      },
+      {
+        category: 'HARM_CATEGORY_DANGEROUS_CONTENT',
+        threshold: 'BLOCK_MEDIUM_AND_ABOVE'
+      }
+    ];
 
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      const error = parseGeminiError({
-        response: {
-          status: response.status,
-          data: errorData,
-          headers: response.headers
-        }
-      });
-      throw error;
-    }
-
-    const data = await response.json();
+    const response = await geminiClient.generateContent(contents, generationConfig, safetySettings);
+    const generatedText = geminiClient.parseTextResponse(response);
     
-    if (data.candidates && data.candidates[0] && data.candidates[0].content && data.candidates[0].content.parts[0]) {
-      const generatedText = data.candidates[0].content.parts[0].text.trim();
+    if (generatedText) {
       return generatedText;
     } else {
-      console.error('Unexpected Gemini response format:', data);
       throw {
         type: ErrorTypes.API_ERROR,
-        message: 'Unexpected response format from Gemini API'
+        message: 'No text content in Gemini API response'
       };
     }
     
@@ -921,103 +852,7 @@ Generate only the comment text, without any additional explanation or formatting
   }
 }
 
-// Function to call Gemini API
-async function generateComment(selectedText, apiKey) {
-  // Enhanced prompt optimized for Gemini
-  const prompt = `You are a thoughtful professional. Generate a professional comment for the following content. 
-
-Guidelines:
-- Add meaningful insights or perspectives to the discussion
-- Ask thoughtful questions when appropriate
-- Share relevant experiences or examples when fitting
-- Maintain a professional yet personable tone
-- Show genuine engagement with the content
-- Avoid generic responses like "Great post!" or "Thanks for sharing"
-- Keep responses concise (2-3 sentences maximum)
-- Respond in the same language as the input text
-- Be specific, add value, and keep it authentic
-
-Post content: "${selectedText}"
-
-Generate only the comment text, without any additional explanation or formatting.`;
-
-  try {
-    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        contents: [{
-          parts: [{
-            text: prompt
-          }]
-        }],
-        generationConfig: {
-          temperature: 0.8,
-          topK: 40,
-          topP: 0.9,
-          maxOutputTokens: 150,
-        },
-        safetySettings: [
-          {
-            category: 'HARM_CATEGORY_HARASSMENT',
-            threshold: 'BLOCK_MEDIUM_AND_ABOVE'
-          },
-          {
-            category: 'HARM_CATEGORY_HATE_SPEECH',
-            threshold: 'BLOCK_MEDIUM_AND_ABOVE'
-          },
-          {
-            category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT',
-            threshold: 'BLOCK_MEDIUM_AND_ABOVE'
-          },
-          {
-            category: 'HARM_CATEGORY_DANGEROUS_CONTENT',
-            threshold: 'BLOCK_MEDIUM_AND_ABOVE'
-          }
-        ]
-      })
-    });
-
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      const error = parseGeminiError({
-        response: {
-          status: response.status,
-          data: errorData,
-          headers: response.headers
-        }
-      });
-      throw error;
-    }
-
-    const data = await response.json();
-    
-    if (data.candidates && data.candidates[0] && data.candidates[0].content && data.candidates[0].content.parts[0]) {
-      const generatedText = data.candidates[0].content.parts[0].text.trim();
-      return generatedText;
-    } else {
-      console.error('Unexpected Gemini response format:', data);
-      throw {
-        type: ErrorTypes.API_ERROR,
-        message: 'Unexpected response format from Gemini API'
-      };
-    }
-    
-  } catch (error) {
-    console.error('Gemini API error:', error);
-    // If it's already a parsed error, throw it
-    if (error.type) {
-      throw error;
-    }
-    // Otherwise, wrap it as a network error
-    throw { 
-      type: ErrorTypes.NETWORK_ERROR, 
-      message: ErrorMessages[ErrorTypes.NETWORK_ERROR] 
-    };
-  }
-}
+// Legacy generateComment function removed - now using GeminiApiClient
 
 // Update checker system
 const GITHUB_VERSION_URL = 'https://raw.githubusercontent.com/norato/ai-beautify-comment/main/version.json';
