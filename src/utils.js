@@ -8,6 +8,8 @@ const ErrorTypes = {
     RATE_LIMIT: 'RATE_LIMIT',
     API_ERROR: 'API_ERROR',
     CLIPBOARD_ERROR: 'CLIPBOARD_ERROR',
+    QUOTA_EXCEEDED: 'QUOTA_EXCEEDED',
+    SERVICE_OVERLOADED: 'SERVICE_OVERLOADED',
     UNKNOWN: 'UNKNOWN'
 };
 
@@ -19,6 +21,8 @@ const ErrorMessages = {
     [ErrorTypes.RATE_LIMIT]: 'Rate limit exceeded. Please wait a moment and try again.',
     [ErrorTypes.API_ERROR]: 'Gemini API error. Please try again later.',
     [ErrorTypes.CLIPBOARD_ERROR]: 'Failed to copy to clipboard. Please try again.',
+    [ErrorTypes.QUOTA_EXCEEDED]: 'Your Gemini API quota has been exceeded. Please check your billing details or wait until your quota resets.',
+    [ErrorTypes.SERVICE_OVERLOADED]: 'AI model is currently overloaded. Please try again in a few minutes.',
     [ErrorTypes.UNKNOWN]: 'An unexpected error occurred. Please try again.'
 };
 

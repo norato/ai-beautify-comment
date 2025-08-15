@@ -78,7 +78,8 @@ class GeminiApiClient {
 
     /**
      * Wrapper for API calls with retry logic and exponential backoff.
-     * Retries on 503 (Service Unavailable) and 429 (Too Many Requests) errors.
+     * Retries only on 503 (Service Unavailable) errors.
+     * Does NOT retry on 429 (Quota Exceeded) errors.
      * @param {Function} apiCallFn - Function that makes the API call
      * @param {number} maxRetries - Maximum number of retry attempts (default: 5)
      * @param {number} baseDelayMs - Base delay in milliseconds (default: 1000)
@@ -88,18 +89,49 @@ class GeminiApiClient {
     async _callApiWithRetry(apiCallFn, maxRetries = 5, baseDelayMs = 1000) {
         let retries = 0;
         
+        // 🐛 DEBUG: Force quota error to test notification system
+        const fakeQuotaError = new Error('Your Gemini API quota has been exceeded. Please check your billing details or wait until your quota resets.');
+        fakeQuotaError.status = 429;
+        fakeQuotaError.type = 'QUOTA_EXCEEDED';
+        fakeQuotaError.requiresUserNotification = true;
+        fakeQuotaError.userNotification = {
+            title: 'API Quota Exceeded',
+            message: 'Your Gemini API usage limit has been reached. Please upgrade your plan or wait for the quota to reset.',
+            actionUrl: 'https://console.cloud.google.com/billing'
+        };
+        console.log('[🤖] DEBUG - Forcing quota error to test notification:', fakeQuotaError);
+        throw fakeQuotaError;
+        
+        // Unreachable code during debug - original retry logic below
+        /*
         while (retries < maxRetries) {
             try {
                 return await apiCallFn();
             } catch (error) {
-                // Check if error has status code and it's retryable (503 or 429)
-                if (error.status && (error.status === 503 || error.status === 429)) {
+                // Handle 429 (Quota Exceeded) - no retry, specific error message
+                if (error.status === 429) {
+                    const quotaError = new Error('Your Gemini API quota has been exceeded. Please check your billing details or wait until your quota resets.');
+                    quotaError.status = error.status;
+                    quotaError.type = 'QUOTA_EXCEEDED';
+                    quotaError.originalError = error;
+                    quotaError.requiresUserNotification = true;
+                    quotaError.userNotification = {
+                        title: 'API Quota Exceeded',
+                        message: 'Your Gemini API usage limit has been reached. Please upgrade your plan or wait for the quota to reset.',
+                        actionUrl: 'https://console.cloud.google.com/billing'
+                    };
+                    throw quotaError;
+                }
+                
+                // Handle 503 (Service Unavailable) - retry with backoff
+                if (error.status === 503) {
                     if (retries >= maxRetries - 1) {
                         // Last retry failed, throw a user-friendly error
-                        const userError = new Error('AI model is currently overloaded. Please try again in a few minutes.');
-                        userError.status = error.status;
-                        userError.originalError = error;
-                        throw userError;
+                        const overloadError = new Error('AI model is currently overloaded. Please try again in a few minutes.');
+                        overloadError.status = error.status;
+                        overloadError.type = 'SERVICE_OVERLOADED';
+                        overloadError.originalError = error;
+                        throw overloadError;
                     }
                     
                     // Calculate delay with exponential backoff + jitter
@@ -115,6 +147,7 @@ class GeminiApiClient {
                 }
             }
         }
+        */
     }
 
     /**

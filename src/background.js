@@ -37,6 +37,21 @@ chrome.runtime.onInstalled.addListener(async (details) => {
       '128': 'assets/icon.png'
     }
   });
+  
+  // 🐛 DEBUG: Test notification on install/update to verify notifications are working
+  console.log('[🤖] DEBUG - Creating test notification...');
+  chrome.notifications.create('test-notification-' + Date.now(), {
+    type: 'basic',
+    iconUrl: 'assets/icon.png',
+    title: 'Extension Loaded',
+    message: 'AI Beautify Comment is ready! If you see this, notifications are working.'
+  }, (createdId) => {
+    if (chrome.runtime.lastError) {
+      console.error('[🤖] DEBUG - Test notification failed:', chrome.runtime.lastError.message);
+    } else {
+      console.log('[🤖] DEBUG - Test notification created successfully:', createdId);
+    }
+  });
 });
 
 // Create context menu on startup
@@ -236,7 +251,14 @@ async function handleTextBeautification(selectedText, tab, requestId = null) {
     }
     
   } catch (error) {
-    console.error('Error beautifying text:', error);
+    console.error('[🤖] DEBUG - Error caught in handleTextBeautification:', error);
+    console.error('[🤖] DEBUG - Error properties:', {
+      message: error.message,
+      status: error.status,
+      type: error.type,
+      requiresUserNotification: error.requiresUserNotification,
+      userNotification: error.userNotification
+    });
     
     // Hide visual loading indicator on error
     try {
@@ -247,6 +269,10 @@ async function handleTextBeautification(selectedText, tab, requestId = null) {
     } catch (e) {
       console.warn('Could not hide visual loading indicator on error:', e);
     }
+    
+    // Show user notification for critical errors (like quota exceeded)
+    console.log('[🤖] DEBUG - About to call showUserNotification...');
+    await showUserNotification(error);
     
     // Handle different error types with proper serialization
     let errorMessage;
@@ -389,6 +415,9 @@ async function handleCustomPromptGeneration(selectedText, tab, promptId, request
       console.warn('Could not hide visual loading indicator on error:', e);
     }
     
+    // Show user notification for critical errors (like quota exceeded)
+    await showUserNotification(error);
+    
     let errorMessage;
     if (error && error.message) {
       errorMessage = error.message;
@@ -526,6 +555,9 @@ async function handleCommentGeneration(selectedText, tab, requestId = null) {
       console.warn('Could not hide visual loading indicator on error:', e);
     }
     
+    // Show user notification for critical errors (like quota exceeded)
+    await showUserNotification(error);
+    
     // Handle different error types with proper serialization
     let errorMessage;
     if (error && error.message) {
@@ -586,6 +618,70 @@ async function showFallbackNotification(title, message) {
     });
   } catch (error) {
     console.error('Fallback notification error:', error);
+  }
+}
+
+// Function to show user-friendly notification for critical errors
+async function showUserNotification(error) {
+  console.log('[🤖] DEBUG - showUserNotification called with error:', error);
+  
+  if (error.requiresUserNotification && error.userNotification) {
+    console.log('[🤖] DEBUG - Error requires user notification, proceeding...');
+    const notification = error.userNotification;
+    console.log('[🤖] DEBUG - Notification data:', notification);
+    
+    try {
+      console.log('[🤖] DEBUG - Attempting to create Chrome notification...');
+      const notificationId = await new Promise((resolve, reject) => {
+        chrome.notifications.create({
+          type: 'basic',
+          iconUrl: 'assets/icon.png',
+          title: notification.title,
+          message: notification.message,
+          buttons: notification.actionUrl ? [
+            { title: 'Open Billing Console' }
+          ] : undefined
+        }, (createdId) => {
+          if (chrome.runtime.lastError) {
+            console.error('[🤖] DEBUG - Chrome notification creation failed:', chrome.runtime.lastError.message);
+            reject(new Error(chrome.runtime.lastError.message));
+          } else {
+            console.log('[🤖] DEBUG - Chrome notification created successfully with ID:', createdId);
+            resolve(createdId);
+          }
+        });
+      });
+      
+      // Handle notification button clicks
+      if (notification.actionUrl) {
+        const buttonClickListener = (clickedNotificationId, buttonIndex) => {
+          if (clickedNotificationId === notificationId && buttonIndex === 0) {
+            chrome.tabs.create({ url: notification.actionUrl });
+            chrome.notifications.clear(notificationId);
+            chrome.notifications.onButtonClicked.removeListener(buttonClickListener);
+            chrome.notifications.onClicked.removeListener(clickListener);
+          }
+        };
+        
+        const clickListener = (clickedNotificationId) => {
+          if (clickedNotificationId === notificationId) {
+            chrome.tabs.create({ url: notification.actionUrl });
+            chrome.notifications.clear(notificationId);
+            chrome.notifications.onButtonClicked.removeListener(buttonClickListener);
+            chrome.notifications.onClicked.removeListener(clickListener);
+          }
+        };
+        
+        chrome.notifications.onButtonClicked.addListener(buttonClickListener);
+        chrome.notifications.onClicked.addListener(clickListener);
+      }
+      
+      console.log('🤖 AI Beautify Comment - User notification shown:', notification.title);
+    } catch (notificationError) {
+      console.error('Error showing user notification:', notificationError);
+      // Fallback to regular notification without buttons
+      showFallbackNotification(notification.title, notification.message);
+    }
   }
 }
 
@@ -675,6 +771,7 @@ async function generateMultipleCommentsLegacy(selectedText, apiKey, customPrompt
   const numResponses = customPrompt.responseCount;
   const successfulResponses = [];
   const THROTTLE_DELAY_MS = 500; // Delay between sequential requests
+  let lastError = null;
   
   console.log(`[🤖] AI Beautify Comment - Falling back to ${numResponses} separate API calls (sequential with throttling)`);
   
@@ -692,9 +789,15 @@ async function generateMultipleCommentsLegacy(selectedText, apiKey, customPrompt
       }
     } catch (error) {
       console.error(`[🤖] AI Beautify Comment - API call ${i + 1}/${numResponses} failed:`, error);
+      lastError = error;
       
-      // If this is a 503/429 error that exhausted retries, we might want to stop trying
-      if (error.status === 503 || error.status === 429) {
+      // If this is a quota exceeded error, stop trying immediately
+      if (error.type === 'QUOTA_EXCEEDED' || error.status === 429) {
+        console.warn('[🤖] AI Beautify Comment - API quota exceeded, stopping further attempts');
+        break;
+      }
+      // If this is a service overloaded error, also stop trying
+      if (error.type === 'SERVICE_OVERLOADED' || error.status === 503) {
         console.warn('[🤖] AI Beautify Comment - API is overloaded, stopping further attempts');
         break;
       }
@@ -703,7 +806,11 @@ async function generateMultipleCommentsLegacy(selectedText, apiKey, customPrompt
   }
   
   if (successfulResponses.length === 0) {
-    throw new Error('Failed to generate any responses. The AI model may be overloaded.');
+    // Re-throw the last error if it has specific type information
+    if (lastError && (lastError.type === 'QUOTA_EXCEEDED' || lastError.type === 'SERVICE_OVERLOADED')) {
+      throw lastError;
+    }
+    throw new Error('Failed to generate any responses. Please try again later.');
   }
   
   // Log if we got partial results
