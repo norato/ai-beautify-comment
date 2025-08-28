@@ -1,32 +1,363 @@
 <!doctype html>
-<html>
+<html lang="en">
   <head>
-    <title>AI Beautify Comment - Privacy Policy</title>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0"
+    />
+    <title>Privacy Policy - AI Beautify Comment</title>
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      body {
+        font-family:
+          'Inter',
+          -apple-system,
+          BlinkMacSystemFont,
+          'Segoe UI',
+          system-ui,
+          sans-serif;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        min-height: 100vh;
+        color: #333;
+        line-height: 1.6;
+      }
+
+      .container {
+        max-width: 900px;
+        margin: 0 auto;
+        padding: 40px 20px;
+      }
+
+      .header {
+        text-align: center;
+        margin-bottom: 40px;
+      }
+
+      .logo-section {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 16px;
+        margin-bottom: 20px;
+      }
+
+      .logo {
+        width: 64px;
+        height: 64px;
+        background: #fff;
+        border-radius: 16px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+      }
+
+      .logo img {
+        width: 48px;
+        height: 48px;
+        border-radius: 8px;
+      }
+
+      .app-name {
+        color: #fff;
+        font-size: 2.5em;
+        font-weight: 700;
+        text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+      }
+
+      .subtitle {
+        color: rgba(255, 255, 255, 0.9);
+        font-size: 1.2em;
+        font-weight: 400;
+      }
+
+      .card {
+        background: #fff;
+        border-radius: 20px;
+        padding: 40px;
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.1);
+        backdrop-filter: blur(10px);
+        margin-bottom: 30px;
+      }
+
+      .section {
+        margin-bottom: 40px;
+      }
+
+      .section:last-child {
+        margin-bottom: 0;
+      }
+
+      .section h2 {
+        color: #667eea;
+        font-size: 1.5em;
+        font-weight: 600;
+        margin-bottom: 16px;
+        position: relative;
+        padding-bottom: 8px;
+      }
+
+      .section h2::after {
+        content: '';
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        width: 40px;
+        height: 3px;
+        background: linear-gradient(90deg, #667eea, #764ba2);
+        border-radius: 2px;
+      }
+
+      .section p {
+        font-size: 16px;
+        margin-bottom: 16px;
+        color: #555;
+      }
+
+      .highlight {
+        background: linear-gradient(
+          120deg,
+          rgba(102, 126, 234, 0.1) 0%,
+          rgba(118, 75, 162, 0.1) 100%
+        );
+        padding: 20px;
+        border-radius: 12px;
+        border-left: 4px solid #667eea;
+        margin: 20px 0;
+      }
+
+      .feature-list {
+        list-style: none;
+        padding: 0;
+      }
+
+      .feature-list li {
+        position: relative;
+        padding: 12px 0 12px 30px;
+        font-size: 16px;
+        color: #555;
+      }
+
+      .feature-list li::before {
+        content: '✓';
+        position: absolute;
+        left: 0;
+        top: 12px;
+        color: #667eea;
+        font-weight: bold;
+        font-size: 18px;
+      }
+
+      .contact-info {
+        background: linear-gradient(135deg, #667eea, #764ba2);
+        color: #fff;
+        padding: 30px;
+        border-radius: 16px;
+        text-align: center;
+      }
+
+      .contact-info h3 {
+        font-size: 1.3em;
+        margin-bottom: 16px;
+      }
+
+      .contact-info a {
+        color: #fff;
+        text-decoration: none;
+        font-weight: 500;
+        padding: 12px 24px;
+        background: rgba(255, 255, 255, 0.2);
+        border-radius: 8px;
+        display: inline-block;
+        transition: all 0.3s ease;
+      }
+
+      .contact-info a:hover {
+        background: rgba(255, 255, 255, 0.3);
+        transform: translateY(-2px);
+      }
+
+      .footer {
+        text-align: center;
+        color: rgba(255, 255, 255, 0.8);
+        font-size: 14px;
+        margin-top: 30px;
+      }
+
+      .update-date {
+        background: rgba(102, 126, 234, 0.1);
+        padding: 10px 20px;
+        border-radius: 20px;
+        display: inline-block;
+        font-size: 14px;
+        color: #667eea;
+        font-weight: 500;
+        margin-bottom: 30px;
+      }
+
+      @media (max-width: 768px) {
+        .container {
+          padding: 20px 15px;
+        }
+
+        .logo-section {
+          flex-direction: column;
+          gap: 12px;
+        }
+
+        .app-name {
+          font-size: 2em;
+        }
+
+        .card {
+          padding: 25px;
+        }
+
+        .section h2 {
+          font-size: 1.3em;
+        }
+      }
+    </style>
   </head>
   <body>
-    <h1>Privacy Policy for AI Beautify Comment</h1>
-    <p><strong>Last updated:</strong> August 2025</p>
+    <div class="container">
+      <div class="header">
+        <div class="logo-section">
+          <div class="logo">
+            <img
+              src="https://raw.githubusercontent.com/norato/ai-beautify-comment/main/src/assets/icon.png"
+              alt="AI Beautify Comment"
+            />
+          </div>
+          <div>
+            <h1 class="app-name">AI Beautify Comment</h1>
+            <p class="subtitle">Privacy Policy</p>
+          </div>
+        </div>
+        <div class="update-date">Last Updated: December 2024</div>
+      </div>
 
-    <h2>Data Collection</h2>
-    <p>AI Beautify Comment only processes:</p>
-    <ul>
-      <li>Text content you select on web pages</li>
-      <li>Your API key (stored locally in your browser)</li>
-    </ul>
+      <div class="card">
+        <div class="section">
+          <h2>🎯 Our Purpose</h2>
+          <p>
+            AI Beautify Comment is a Chrome extension that enhances your online
+            communication using Google's Gemini AI. We help you generate
+            professional comments and improve your text across any website with
+            intelligent language processing.
+          </p>
+        </div>
 
-    <h2>How We Use Data</h2>
-    <p>
-      Selected text is sent to Google's Gemini API for processing and
-      enhancement. No data is stored on our servers.
-    </p>
+        <div class="section">
+          <h2>📋 What Data We Access</h2>
+          <div class="highlight">
+            <p>
+              <strong>We only access:</strong> Text content that you explicitly
+              select on web pages
+            </p>
+          </div>
+          <ul class="feature-list">
+            <li>Selected text from web pages (for AI processing)</li>
+            <li>Your Gemini API key (stored locally in your browser)</li>
+            <li>Your custom prompts and settings (stored locally)</li>
+          </ul>
+          <p>
+            <strong>We DO NOT collect:</strong> Personal information, browsing
+            history, passwords, financial data, health information, or any other
+            sensitive data.
+          </p>
+        </div>
 
-    <h2>Data Storage</h2>
-    <p>
-      All settings and API keys are stored locally in your browser using
-      Chrome's storage API.
-    </p>
+        <div class="section">
+          <h2>🔄 How We Use Your Data</h2>
+          <p>When you select text and use our extension:</p>
+          <ul class="feature-list">
+            <li>
+              Selected text is sent securely to Google's Gemini API for
+              processing
+            </li>
+            <li>Gemini processes the text and returns improved content</li>
+            <li>The result is displayed to you or copied to your clipboard</li>
+            <li>No data is stored on our servers</li>
+          </ul>
+        </div>
 
-    <h2>Contact</h2>
-    <p>Email: fnoratol@gmail.com</p>
+        <div class="section">
+          <h2>🔒 Data Storage & Security</h2>
+          <div class="highlight">
+            <p>
+              <strong>Everything stays local:</strong> Your API key, settings,
+              and preferences are stored securely in your browser using Chrome's
+              storage API. This data never leaves your device.
+            </p>
+          </div>
+          <ul class="feature-list">
+            <li>API keys are stored locally and encrypted</li>
+            <li>Custom prompts remain on your device</li>
+            <li>No personal data is transmitted to our servers</li>
+            <li>All communication is directly with Google's Gemini API</li>
+          </ul>
+        </div>
+
+        <div class="section">
+          <h2>🌐 Third-Party Services</h2>
+          <p>
+            We integrate with <strong>Google Gemini AI</strong> to provide text
+            enhancement services. When you use our extension, your selected text
+            is processed by Google's service according to their privacy policy.
+          </p>
+          <p>
+            Learn more:
+            <a
+              href="https://policies.google.com/privacy"
+              style="color: #667eea"
+              >Google Privacy Policy</a
+            >
+          </p>
+        </div>
+
+        <div class="section">
+          <h2>⚙️ Your Rights & Controls</h2>
+          <ul class="feature-list">
+            <li>You can disable the extension at any time</li>
+            <li>You can delete stored settings from the extension popup</li>
+            <li>You control what text is processed by what you select</li>
+            <li>You can remove the extension completely from Chrome</li>
+          </ul>
+        </div>
+
+        <div class="section">
+          <h2>🔄 Updates to This Policy</h2>
+          <p>
+            We may update this privacy policy occasionally. Changes will be
+            reflected on this page with an updated date. Continued use of the
+            extension after changes constitutes acceptance of the updated
+            policy.
+          </p>
+        </div>
+
+        <div class="section">
+          <div class="contact-info">
+            <h3>📞 Contact Us</h3>
+            <p>Have questions about your privacy or this policy?</p>
+            <a href="mailto:fnoratol@gmail.com">fnoratol@gmail.com</a>
+          </div>
+        </div>
+      </div>
+
+      <div class="footer">
+        <p>&copy; 2024 AI Beautify Comment. Built with privacy in mind.</p>
+      </div>
+    </div>
   </body>
 </html>
