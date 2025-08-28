@@ -5,6 +5,26 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.1.1] - 2025-08-28
+
+### 🔧 Fixed
+- **Chrome Web Store Compliance**: Removed broad content scripts (`*://*/*`) that triggered permissions review
+- **Manifest Optimization**: Extension now uses only `activeTab` + dynamic script injection for better security
+- **Web Resources Access**: Updated to use `<all_urls>` for proper resource loading
+- **Permission Scope**: Maintained specific host permissions only for required APIs (Gemini AI & GitHub)
+
+### 🛡️ Security
+- **Reduced Attack Surface**: No automatic content script injection on all websites
+- **User-Triggered Access**: Extension only accesses tabs when explicitly activated by user
+- **Minimal Permissions**: Follows Chrome Web Store security guidelines for extension approval
+
+### 🎯 Technical
+- **Backward Compatible**: All functionality preserved using `chrome.scripting.executeScript()`
+- **Dynamic Injection**: Content scripts loaded only when needed via context menu
+- **API Access**: Maintained secure communication with Google Gemini API
+
+---
+
 ## [3.1.0] - 2025-08-28
 
 ### 🏗️ Architecture
