@@ -40,31 +40,27 @@ A Chrome extension that enhances and generates professional comments on any webs
 - 🚀 **Fast and responsive with retry logic**
 - ⏱️ **Intelligent timeout handling**
 
-## 🆕 What's New in v3.0.0 - Major Update!
+## 🆕 What's New in v3.1.0 - Architecture & Quality Update!
 
-### 🚀 New AI Beautify Feature
-- **✨ AI Beautify (improve yours)** - New functionality to enhance and improve your own text with intelligent formatting
-- **🎯 In-place text replacement** - Automatically replaces selected text in editable fields (input, textarea, contenteditable)
-- **📋 Smart fallback system** - Copies to clipboard when in-place replacement isn't possible
-- **⚙️ Separate response settings** - Independent configuration for AI Comment and AI Beautify response counts
+### 🏗️ Architecture Improvements
+- **📁 Clean code organization** - Migrated to modular `src/` directory structure
+- **🔧 Enhanced API client** - Extracted dedicated `GeminiApiClient` class for better maintainability
+- **📦 Improved build system** - Updated validation and build scripts for new structure
+- **📋 Comprehensive documentation** - Added security audit framework and quality guidelines
 
-### 🔄 Revolutionary Language Detection
-- **🧠 Native Gemini capability** - Removed manual JavaScript language detection in favor of Gemini's superior AI-powered detection
-- **🌍 More accurate responses** - Uses "Respond in the same language as the input text" instruction for better multilingual support
-- **⚡ Performance boost** - Eliminated 60+ lines of detection code for cleaner, faster execution
-- **🎯 Better reliability** - No more regex-based detection failures
+### 🚀 Reliability Enhancements  
+- **⚡ Smart retry logic** - Exponential backoff for handling temporary API overloads (503 errors)
+- **🛡️ Better error handling** - Distinct strategies for quota vs service availability issues
+- **🔔 Enhanced notifications** - Improved user feedback for API quota scenarios
+- **✅ Code quality** - Fixed all ESLint warnings and improved standards
 
-### 🎨 Enhanced User Experience
-- **📱 Reorganized menu** - AI Beautify positioned first, visual separator, then AI Comment for better hierarchy
-- **🔄 Clearer naming** - Renamed "AI Beautify Comment" to "AI Comment" for better understanding
-- **📖 Updated instructions** - Clear explanation of AI Beautify vs AI Comment functionality
-- **⚙️ Dual settings** - Separate response count configuration for each feature
+### 🔧 Development Experience
+- **🔍 Updated validation** - Scripts now work seamlessly with new file structure
+- **📊 Version synchronization** - All configuration files properly aligned
+- **🐛 Bug fixes** - Resolved Chrome notification connection issues
+- **🧹 Code cleanup** - Removed debug code and improved maintainability
 
-### 🔧 Development & Quality Improvements
-- **📦 Package.json with scripts** - Added npm scripts for linting, validation, and automated checks
-- **✅ ESLint integration** - Automated code quality and style checking
-- **🔍 Validation scripts** - Comprehensive extension validation before release
-- **📊 Build automation** - Automated ZIP creation and release preparation
+*For complete version history and previous releases, see [CHANGELOG.md](CHANGELOG.md)*
 
 ## 📦 Distribution
 
@@ -139,6 +135,8 @@ The extension includes an automatic update checker:
 - **No Data Collection:** Extension doesn't collect or transmit user data
 - **Direct API Calls:** Only communicates with official Google Gemini API
 - **Open Source:** Full source code available for inspection
+- **Security Audit:** Comprehensive security documentation available in `SECURITY_FIXES.md`
+- **Quality Assurance:** Automated linting and validation for code security
 
 ## ⚠️ Important Disclaimers
 
@@ -161,6 +159,9 @@ cd ai-beautify-comment
 # Install dependencies
 npm install
 
+# Build extension from src/ to dist/
+npm run build
+
 # Run validation checks
 npm run check
 
@@ -169,12 +170,14 @@ npm run zip
 ```
 
 ### Development Scripts
+- **`npm run build`** - Build extension from src/ to dist/ directory
 - **`npm run lint`** - Run ESLint to check code quality and style
 - **`npm run lint:fix`** - Automatically fix linting issues where possible
 - **`npm run validate`** - Comprehensive extension validation (files, manifest, versions)
 - **`npm run syntax-check`** - Basic JavaScript syntax verification
-- **`npm run check`** - Run all validations (lint + validate)
+- **`npm run check`** - Run all validations (lint + validate) 
 - **`npm run zip`** - Create distribution ZIP after validation
+- **`npm run preversion`** - Pre-release validation (runs check automatically)
 - **`npm test`** - Run syntax check and linting
 
 ### Quality Assurance
@@ -186,24 +189,41 @@ Before any commit or release:
 ### File Structure
 ```
 ai-beautify-comment/
-├── manifest.json          # Extension configuration
-├── background.js          # Service worker with update system
-├── content.js             # Content script for clipboard operations
-├── popup.html/js/css      # Extension popup interface
-├── utils.js              # Utility functions and error handling
-├── icon.png              # Extension icon
+├── src/                   # Source code directory
+│   ├── manifest.json      # Extension configuration
+│   ├── background.js      # Service worker with update system
+│   ├── content.js         # Content script for clipboard operations
+│   ├── utils.js          # Utility functions and error handling
+│   ├── assets/           # Extension assets
+│   │   └── icon.png      # Extension icon
+│   ├── popup/            # Extension popup interface
+│   │   ├── popup.html    # Popup HTML structure
+│   │   ├── popup.js      # Popup JavaScript logic
+│   │   └── popup.css     # Popup styling
+│   └── gemini/           # Gemini API integration
+│       └── gemini-api.js # Dedicated API client class
+├── scripts/              # Build and validation scripts
+│   ├── build.js         # Build automation script
+│   ├── create-zip.js    # ZIP creation for distribution
+│   └── validate.js      # Extension validation script
+├── dist/                 # Built extension (created by build script)
 ├── version.json          # Version info for updates
-├── build.sh              # Build script
+├── package.json          # NPM configuration and scripts
+├── CHANGELOG.md          # Version history and changes
+├── SECURITY_FIXES.md     # Security audit and improvement tracking
+├── CLAUDE.md             # AI collaboration guide
 ├── README.md             # This file
 └── DISTRIBUTION.md       # User installation guide
 ```
 
 ### Update Process
-1. Update `manifest.json` version
+1. Update `src/manifest.json` version
 2. Update `version.json` with new version and release notes
-3. Run `./build.sh` to create distribution package
-4. Create GitHub Release with the ZIP file
-5. Users will be automatically notified of the update
+3. Update `package.json` version to match
+4. Run `npm run build` to create distribution package
+5. Run `npm run zip` to create ZIP file
+6. Create GitHub Release with the ZIP file
+7. Users will be automatically notified of the update
 
 ### Technologies Used
 - Chrome Extensions Manifest V3

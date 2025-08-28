@@ -5,6 +5,49 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.1.0] - 2025-08-28
+
+### 🏗️ Architecture
+- **Major code reorganization**: Migrated to clean `src/` directory structure
+- **Modular API client**: Extracted dedicated `GeminiApiClient` class for better separation of concerns
+- **Enhanced build pipeline**: Updated validation and build scripts to work with new structure
+- **File organization**: Organized assets and popup files into dedicated folders
+
+### 🚀 Added
+- **Comprehensive retry logic**: Exponential backoff for handling API 503 (Service Overloaded) errors
+- **Smart error handling**: Different retry strategies for quota vs temporary service errors
+- **Enhanced debugging**: Detailed logging system for troubleshooting Chrome notifications
+- **Production-ready validation**: Updated validation script to work with new file structure
+- **Security audit framework**: Added comprehensive security and code quality documentation
+
+### 🔄 Changed
+- **API error handling**: Improved user feedback for quota exceeded scenarios
+- **Context menu service**: Refactored for better maintainability and debugging
+- **Notification system**: Enhanced with better fallback mechanisms and persistence
+- **Version consistency**: Synchronized version numbers across all configuration files
+
+### 🎨 Improved
+- **Code quality**: Fixed all ESLint warnings and improved code standards
+- **Error messaging**: More specific and actionable error messages for users
+- **API reliability**: Reduced 503 error failures through intelligent retry mechanisms
+- **Development workflow**: Streamlined build and validation processes
+- **Documentation**: Added comprehensive security fixes tracking document
+
+### 🔧 Technical
+- **Service worker optimization**: Better handling of Chrome extension lifecycle
+- **API throttling**: Implemented request throttling to prevent rate limiting
+- **Memory management**: Improved cleanup and resource management
+- **Build system**: Enhanced scripts for development and production workflows
+- **Testing infrastructure**: Improved validation and quality assurance processes
+
+### 🐛 Fixed
+- **Validation script**: Now correctly works with `src/` directory structure
+- **Version synchronization**: All version files now properly aligned at 3.1.0
+- **Chrome notifications**: Fixed "Could not establish connection" errors for quota notifications
+- **Build process**: Resolved issues with file path resolution in scripts
+
+---
+
 ## [3.0.0] - 2025-08-14
 
 ### 🚀 Added
