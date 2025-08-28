@@ -25,22 +25,27 @@ function success(message) {
   console.log(`✅ ${message}`);
 }
 
+// Define base directories
+const srcDir = path.join(__dirname, '..', 'src');
+const rootDir = path.join(__dirname, '..');
+
 // Check required files
 const requiredFiles = [
-  'manifest.json',
-  'background.js',
-  'content.js',
-  'popup.html',
-  'popup.js',
-  'popup.css',
-  'utils.js',
-  'icon.png',
-  'version.json'
+  { file: 'manifest.json', dir: srcDir },
+  { file: 'background.js', dir: srcDir },
+  { file: 'content.js', dir: srcDir },
+  { file: 'popup/popup.html', dir: srcDir },
+  { file: 'popup/popup.js', dir: srcDir },
+  { file: 'popup/popup.css', dir: srcDir },
+  { file: 'utils.js', dir: srcDir },
+  { file: 'assets/icon.png', dir: srcDir },
+  { file: 'version.json', dir: rootDir }
 ];
 
 console.log('📁 Checking required files...');
-requiredFiles.forEach(file => {
-  if (fs.existsSync(file)) {
+requiredFiles.forEach(({ file, dir }) => {
+  const filePath = path.join(dir, file);
+  if (fs.existsSync(filePath)) {
     success(`${file} exists`);
   } else {
     error(`${file} is missing`);
@@ -50,7 +55,7 @@ requiredFiles.forEach(file => {
 // Validate manifest.json
 console.log('\n📋 Validating manifest.json...');
 try {
-  const manifest = JSON.parse(fs.readFileSync('manifest.json', 'utf8'));
+  const manifest = JSON.parse(fs.readFileSync(path.join(srcDir, 'manifest.json'), 'utf8'));
   
   // Check required fields
   const requiredFields = ['manifest_version', 'name', 'version', 'description'];
@@ -90,7 +95,7 @@ try {
 // Validate version.json
 console.log('\n📊 Validating version.json...');
 try {
-  const version = JSON.parse(fs.readFileSync('version.json', 'utf8'));
+  const version = JSON.parse(fs.readFileSync(path.join(rootDir, 'version.json'), 'utf8'));
   
   if (version.version) {
     success(`Version: ${version.version}`);
@@ -111,9 +116,9 @@ try {
 // Check version consistency
 console.log('\n🔄 Checking version consistency...');
 try {
-  const manifest = JSON.parse(fs.readFileSync('manifest.json', 'utf8'));
-  const version = JSON.parse(fs.readFileSync('version.json', 'utf8'));
-  const packageJson = JSON.parse(fs.readFileSync('package.json', 'utf8'));
+  const manifest = JSON.parse(fs.readFileSync(path.join(srcDir, 'manifest.json'), 'utf8'));
+  const version = JSON.parse(fs.readFileSync(path.join(rootDir, 'version.json'), 'utf8'));
+  const packageJson = JSON.parse(fs.readFileSync(path.join(rootDir, 'package.json'), 'utf8'));
 
   if (manifest.version === version.version && version.version === packageJson.version) {
     success(`All versions match: ${manifest.version}`);
@@ -126,11 +131,17 @@ try {
 
 // Basic syntax check for JavaScript files
 console.log('\n🔧 Performing basic syntax checks...');
-const jsFiles = ['background.js', 'content.js', 'popup.js', 'utils.js'];
+const jsFiles = [
+  { file: 'background.js', dir: srcDir },
+  { file: 'content.js', dir: srcDir },
+  { file: 'popup/popup.js', dir: srcDir },
+  { file: 'utils.js', dir: srcDir }
+];
 
-jsFiles.forEach(file => {
+jsFiles.forEach(({ file, dir }) => {
   try {
-    const content = fs.readFileSync(file, 'utf8');
+    const filePath = path.join(dir, file);
+    const content = fs.readFileSync(filePath, 'utf8');
     // Basic syntax check - just try to parse it
     new Function(content);
     success(`${file} syntax OK`);
@@ -144,7 +155,7 @@ console.log('\n🕵️ Checking for common issues...');
 
 // Check if background.js has importScripts for utils.js
 try {
-  const backgroundContent = fs.readFileSync('background.js', 'utf8');
+  const backgroundContent = fs.readFileSync(path.join(srcDir, 'background.js'), 'utf8');
   if (backgroundContent.includes('importScripts(\'utils.js\')')) {
     success('background.js properly imports utils.js');
   } else {
