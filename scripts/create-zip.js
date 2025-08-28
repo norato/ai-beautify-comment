@@ -12,22 +12,21 @@ const { execSync } = require('child_process');
 console.log('📦 Creating distribution ZIP for AI Beautify Comment extension...\n');
 
 // Get version from package.json
-const packageJson = JSON.parse(fs.readFileSync('package.json', 'utf8'));
+const packageJsonPath = path.resolve(__dirname, '../package.json');
+const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, 'utf8'));
 const version = packageJson.version;
 const zipName = `ai-beautify-comment-v${version}.zip`;
 
-// Files to include in the ZIP
-const includeFiles = [
-  'manifest.json',
-  'background.js',
-  'content.js',
-  'popup.html',
-  'popup.js',
-  'popup.css',
-  'utils.js',
-  'icon.png',
-  'version.json'
-];
+// Check if dist folder exists
+const distDir = path.resolve(__dirname, '../dist');
+if (!fs.existsSync(distDir)) {
+  console.error('❌ dist/ folder not found. Please run "npm run build" first.');
+  process.exit(1);
+}
+
+// Change to dist directory for ZIP creation
+process.chdir(distDir);
+console.log(`📂 Working directory: ${distDir}\n`);
 
 // Files and directories to exclude
 const excludePatterns = [
@@ -44,33 +43,46 @@ const excludePatterns = [
   'Thumbs.db'
 ];
 
-console.log('📋 Files to include:');
-includeFiles.forEach(file => {
-  if (fs.existsSync(file)) {
-    console.log(`✅ ${file}`);
-  } else {
-    console.error(`❌ ${file} (missing)`);
-    process.exit(1);
-  }
-});
+console.log('📋 Checking files in dist folder:');
+
+// Get all files in dist directory
+function getAllFiles(dir, fileList = []) {
+  const files = fs.readdirSync(dir);
+  files.forEach(file => {
+    const filePath = path.join(dir, file);
+    if (fs.statSync(filePath).isDirectory()) {
+      getAllFiles(filePath, fileList);
+    } else {
+      fileList.push(path.relative(distDir, filePath));
+    }
+  });
+  return fileList;
+}
+
+const distFiles = getAllFiles(distDir);
+console.log(`✅ Found ${distFiles.length} files in dist/`);
+distFiles.forEach(file => console.log(`  - ${file}`));
 
 console.log('\n🗂️ Creating ZIP file...');
 
 try {
+  // ZIP output path (in project root, not dist)
+  const outputZipPath = path.resolve(__dirname, '..', zipName);
+  
   // Remove existing ZIP if it exists
-  if (fs.existsSync(zipName)) {
-    fs.unlinkSync(zipName);
+  if (fs.existsSync(outputZipPath)) {
+    fs.unlinkSync(outputZipPath);
     console.log(`🗑️ Removed existing ${zipName}`);
   }
 
-  // Create ZIP using system zip command (cross-platform)
-  const zipCommand = `zip -r "${zipName}" ${includeFiles.join(' ')} -x ${excludePatterns.map(p => `"${p}/*"`).join(' ')}`;
+  // Create ZIP of entire dist folder contents
+  const zipCommand = `zip -r "${outputZipPath}" . -x "*.DS_Store" -x "__MACOSX/*" -x "*/.*"`;
   
-  execSync(zipCommand, { stdio: 'pipe' });
+  execSync(zipCommand, { stdio: 'pipe', cwd: distDir });
   
   // Check if ZIP was created successfully
-  if (fs.existsSync(zipName)) {
-    const stats = fs.statSync(zipName);
+  if (fs.existsSync(outputZipPath)) {
+    const stats = fs.statSync(outputZipPath);
     const sizeKB = (stats.size / 1024).toFixed(2);
     
     console.log(`✅ Successfully created ${zipName}`);

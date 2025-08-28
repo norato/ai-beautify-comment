@@ -86,24 +86,9 @@ class GeminiApiClient {
      * @returns {Promise<object>} The API response
      * @throws {Error} If all retry attempts fail
      */
-    async _callApiWithRetry(apiCallFn, maxRetries = 5, baseDelayMs = 1000) {
+    async _callApiWithRetry(apiCallFn, maxRetries = 3, baseDelayMs = 1000) {
         let retries = 0;
         
-        // 🐛 DEBUG: Force quota error to test notification system
-        const fakeQuotaError = new Error('Your Gemini API quota has been exceeded. Please check your billing details or wait until your quota resets.');
-        fakeQuotaError.status = 429;
-        fakeQuotaError.type = 'QUOTA_EXCEEDED';
-        fakeQuotaError.requiresUserNotification = true;
-        fakeQuotaError.userNotification = {
-            title: 'API Quota Exceeded',
-            message: 'Your Gemini API usage limit has been reached. Please upgrade your plan or wait for the quota to reset.',
-            actionUrl: 'https://console.cloud.google.com/billing'
-        };
-        console.log('[🤖] DEBUG - Forcing quota error to test notification:', fakeQuotaError);
-        throw fakeQuotaError;
-        
-        // Unreachable code during debug - original retry logic below
-        /*
         while (retries < maxRetries) {
             try {
                 return await apiCallFn();
@@ -147,7 +132,6 @@ class GeminiApiClient {
                 }
             }
         }
-        */
     }
 
     /**

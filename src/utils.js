@@ -52,12 +52,13 @@ function parseGeminiError(error) {
         case 401:
         case 403:
             return { type: ErrorTypes.API_KEY_INVALID, message: ErrorMessages[ErrorTypes.API_KEY_INVALID] };
-        case 429:
+        case 429: {
             const retryAfter = error.response.headers?.['retry-after'];
             const message = retryAfter 
                 ? `Rate limit exceeded. Please wait ${retryAfter} seconds.`
                 : ErrorMessages[ErrorTypes.RATE_LIMIT];
             return { type: ErrorTypes.RATE_LIMIT, message, retryAfter };
+        }
         case 500:
         case 502:
         case 503:

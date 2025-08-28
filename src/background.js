@@ -11,7 +11,7 @@ try {
 }
 
 // TypeScript declarations for imported functions (loaded via importScripts)
-/* global getEnabledPrompts, getSettings, addPrompt, updatePrompt, deletePrompt, updateSettings, migrateStorage, ErrorTypes, ErrorMessages, parseGeminiError, GeminiApiClient, ContextMenuService, PromptTemplates */
+/* global getEnabledPrompts, getSettings, addPrompt, updatePrompt, deletePrompt, updateSettings, migrateStorage, ErrorTypes, ErrorMessages, GeminiApiClient, ContextMenuService, PromptTemplates */
 
 // Initialize Context Menu Service
 const contextMenuService = new ContextMenuService(getEnabledPrompts);
@@ -245,7 +245,7 @@ async function handleTextBeautification(selectedText, tab, requestId = null) {
       }, () => {
         if (chrome.runtime.lastError) {
           console.warn(`Could not display responses on tab ${tab.id}: ${chrome.runtime.lastError.message}`);
-          showFallbackNotification('Error', 'Failed to display responses');
+          showFallbackNotification('Error', 'Failed to display responses', true);
         }
       });
     }
@@ -294,7 +294,7 @@ async function handleTextBeautification(selectedText, tab, requestId = null) {
     }, () => {
       if (chrome.runtime.lastError) {
         console.warn(`Could not show error notification on tab ${tab.id}: ${chrome.runtime.lastError.message}`);
-        showFallbackNotification('Error', errorMessage);
+        showFallbackNotification('Error', errorMessage, true);
       }
     });
   }
@@ -347,7 +347,7 @@ async function handleCustomPromptGeneration(selectedText, tab, promptId, request
       }, async (response) => {
         if (chrome.runtime.lastError) {
           console.warn(`Could not copy comment to clipboard on tab ${tab.id}: ${chrome.runtime.lastError.message}`);
-          await showFallbackNotification('Error', 'Failed to copy comment to clipboard');
+          await showFallbackNotification('Error', 'Failed to copy comment to clipboard', true);
           return;
         }
         
@@ -365,7 +365,7 @@ async function handleCustomPromptGeneration(selectedText, tab, promptId, request
           chrome.tabs.sendMessage(tab.id, {
             action: 'showSuccess',
             requestId: requestId
-          }, (_) => {
+          }, () => {
             if (chrome.runtime.lastError) {
               console.warn(`Could not show success notification on tab ${tab.id}: ${chrome.runtime.lastError.message}`);
               showFallbackNotification(`${customPrompt.name} Generated!`, 'The comment has been copied to your clipboard.');
@@ -397,7 +397,7 @@ async function handleCustomPromptGeneration(selectedText, tab, promptId, request
       }, () => {
         if (chrome.runtime.lastError) {
           console.warn(`Could not display responses on tab ${tab.id}: ${chrome.runtime.lastError.message}`);
-          showFallbackNotification('Error', 'Failed to display responses');
+          showFallbackNotification('Error', 'Failed to display responses', true);
         }
       });
     }
@@ -434,10 +434,10 @@ async function handleCustomPromptGeneration(selectedText, tab, promptId, request
       action: 'showError',
       message: errorMessage,
       requestId: requestId
-    }, (_) => {
+    }, () => {
       if (chrome.runtime.lastError) {
         console.warn(`Could not show error notification on tab ${tab.id}: ${chrome.runtime.lastError.message}`);
-        showFallbackNotification('Error', errorMessage);
+        showFallbackNotification('Error', errorMessage, true);
       }
     });
   }
@@ -487,7 +487,7 @@ async function handleCommentGeneration(selectedText, tab, requestId = null) {
       }, async (response) => {
         if (chrome.runtime.lastError) {
           console.warn(`Could not copy comment to clipboard on tab ${tab.id}: ${chrome.runtime.lastError.message}`);
-          await showFallbackNotification('Error', 'Failed to copy comment to clipboard');
+          await showFallbackNotification('Error', 'Failed to copy comment to clipboard', true);
           return;
         }
         
@@ -505,7 +505,7 @@ async function handleCommentGeneration(selectedText, tab, requestId = null) {
           chrome.tabs.sendMessage(tab.id, {
             action: 'showSuccess',
             requestId: requestId
-          }, (_) => {
+          }, () => {
             if (chrome.runtime.lastError) {
               console.warn(`Could not show success notification on tab ${tab.id}: ${chrome.runtime.lastError.message}`);
               showFallbackNotification('Comment Generated!', 'The comment has been copied to your clipboard.');
@@ -537,7 +537,7 @@ async function handleCommentGeneration(selectedText, tab, requestId = null) {
       }, () => {
         if (chrome.runtime.lastError) {
           console.warn(`Could not display responses on tab ${tab.id}: ${chrome.runtime.lastError.message}`);
-          showFallbackNotification('Error', 'Failed to display responses');
+          showFallbackNotification('Error', 'Failed to display responses', true);
         }
       });
     }
@@ -575,46 +575,27 @@ async function handleCommentGeneration(selectedText, tab, requestId = null) {
       action: 'showError',
       message: errorMessage,
       requestId: requestId
-    }, (_) => {
+    }, () => {
       if (chrome.runtime.lastError) {
         console.warn(`Could not show error notification on tab ${tab.id}: ${chrome.runtime.lastError.message}`);
-        showFallbackNotification('Error', errorMessage);
+        showFallbackNotification('Error', errorMessage, true);
       }
     });
   }
 }
 
-// Helper function to send notification with Chrome notification fallback
-async function sendNotificationWithFallback(tabId, message, fallbackTitle, fallbackMessage) {
-  try {
-    const response = await new Promise((resolve) => {
-      chrome.tabs.sendMessage(tabId, message, (response) => {
-        if (chrome.runtime.lastError) {
-          resolve(null);
-        } else {
-          resolve(response);
-        }
-      });
-    });
-    
-    // If content script didn't respond or failed, use Chrome notification
-    if (!response || !response.success) {
-      await showFallbackNotification(fallbackTitle, fallbackMessage);
-    }
-  } catch (error) {
-    console.error('Notification error:', error);
-    await showFallbackNotification(fallbackTitle, fallbackMessage);
-  }
-}
 
 // Helper function to show Chrome notification as fallback
-async function showFallbackNotification(title, message) {
+async function showFallbackNotification(title, message, isError = false) {
   try {
     chrome.notifications.create({
       type: 'basic',
       iconUrl: 'assets/icon.png',
       title: title,
-      message: message
+      message: message,
+      // For errors, keep notification visible until user dismisses
+      requireInteraction: isError,
+      priority: isError ? 2 : 1
     });
   } catch (error) {
     console.error('Fallback notification error:', error);
@@ -638,6 +619,8 @@ async function showUserNotification(error) {
           iconUrl: 'assets/icon.png',
           title: notification.title,
           message: notification.message,
+          requireInteraction: true, // IMPORTANT: Keep notification visible until user interacts
+          priority: 2, // High priority
           buttons: notification.actionUrl ? [
             { title: 'Open Billing Console' }
           ] : undefined
@@ -963,7 +946,7 @@ async function updateContextMenu() {
 }
 
 // Message handler for communication with popup and content scripts
-chrome.runtime.onMessage.addListener((request, _, sendResponse) => {
+chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   if (request.action === 'testConnection') {
     sendResponse({ success: true });
   } else if (request.action === 'updateContextMenu') {

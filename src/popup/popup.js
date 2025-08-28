@@ -9,8 +9,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Tab elements
     const apiKeyTabBtn = document.getElementById('apiKeyTabBtn');
     const customPromptsTabBtn = document.getElementById('customPromptsTabBtn');
-    const apiKeyTabContent = document.getElementById('apiKeyTabContent');
-    const customPromptsTabContent = document.getElementById('customPromptsTabContent');
+    // const apiKeyTabContent = document.getElementById('apiKeyTabContent');
+    // const customPromptsTabContent = document.getElementById('customPromptsTabContent');
     
     // API Key elements
     const apiKeyInput = document.getElementById('apiKeyInput');
